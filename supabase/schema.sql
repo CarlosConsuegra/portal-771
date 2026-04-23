@@ -17,7 +17,7 @@ create table if not exists public.portales (
 );
 
 alter table public.portales
-add column if not exists image_url_360 text null;
+add column if not exists image_360_url text null;
 
 alter table public.portales enable row level security;
 

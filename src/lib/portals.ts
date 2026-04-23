@@ -13,7 +13,7 @@ function mapRowToPortal(row: PortalRow): Portal {
     title: row.titulo,
     narrative: row.narrativa,
     imageUrl: row.image_url,
-    imageUrl360: row.image_url_360 ?? null,
+    imageUrl360: row.image_360_url ?? null,
     mapId: row.mapa_id,
     lat: row.lat,
     lng: row.lng,

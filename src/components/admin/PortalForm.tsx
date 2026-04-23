@@ -46,6 +46,8 @@ function Field({ label, name, defaultValue, rows, type = "text" }: FieldProps) {
 export function PortalForm({ mode, portal, action }: PortalFormProps) {
   return (
     <form action={action} className="flex flex-col gap-10">
+      <input type="hidden" name="image360Url" value={portal?.imageUrl360 ?? ""} />
+
       <div className="grid gap-6 md:grid-cols-2">
         <Field label="slug" name="slug" defaultValue={portal?.slug} />
         <Field label="mapa_id" name="mapId" defaultValue={portal?.mapId ?? "mapa-771"} />
@@ -64,6 +66,18 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         <input
           type="file"
           name="imageFile"
+          accept="image/*"
+          className="min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors file:mr-4 file:border-0 file:bg-transparent file:text-sm file:text-foreground"
+        />
+      </label>
+
+      <label className="flex flex-col gap-3">
+        <span className="text-xs uppercase tracking-[0.18em] text-muted">
+          image_360_file
+        </span>
+        <input
+          type="file"
+          name="image360File"
           accept="image/*"
           className="min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors file:mr-4 file:border-0 file:bg-transparent file:text-sm file:text-foreground"
         />
@@ -102,7 +116,7 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
           Volver al archivo
         </Link>
         <p className="quiet-label">
-          Imagen y audio opcionales. Si subes archivos, reemplazan las URLs actuales.
+          Imagen, imagen 360 y audio son opcionales. Si subes archivos, reemplazan las URLs actuales.
         </p>
       </div>
     </form>

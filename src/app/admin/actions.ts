@@ -55,7 +55,42 @@ async function maybeUploadFile(
   return publicUrl;
 }
 
-function buildPortalPayload(formData: FormData, imageUrl: string, audioUrl: string | null) {
+async function maybeUpload360Image(
+  file: FormDataEntryValue | null,
+  slug: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
+) {
+  if (!(file instanceof File) || file.size === 0) {
+    return null;
+  }
+
+  const path = `portales/360/${slug}.jpg`;
+
+  const { error } = await supabase.storage
+    .from(supabaseStorageBucket)
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type || "image/jpeg",
+    });
+
+  if (error) {
+    throw new Error(`No se pudo subir la imagen 360: ${error.message}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(supabaseStorageBucket).getPublicUrl(path);
+
+  return publicUrl;
+}
+
+function buildPortalPayload(
+  formData: FormData,
+  imageUrl: string,
+  image360Url: string | null,
+  audioUrl: string | null
+) {
   return {
     slug: parseRequiredString(formData.get("slug"), "slug"),
     titulo: parseRequiredString(formData.get("title"), "título"),
@@ -64,6 +99,7 @@ function buildPortalPayload(formData: FormData, imageUrl: string, audioUrl: stri
     marker_x: parseRequiredString(formData.get("markerX"), "marker_x"),
     marker_y: parseRequiredString(formData.get("markerY"), "marker_y"),
     image_url: imageUrl,
+    image_360_url: image360Url,
     audio_url: audioUrl,
     status: parseRequiredString(formData.get("status"), "status"),
   };
@@ -113,6 +149,11 @@ export async function createPortal(formData: FormData) {
     supabase,
     "audio"
   );
+  const uploadedImage360Url = await maybeUpload360Image(
+    formData.get("image360File"),
+    slug,
+    supabase
+  );
   const currentImageUrl =
     typeof formData.get("imageUrl") === "string"
       ? formData.get("imageUrl")!.toString().trim()
@@ -121,10 +162,13 @@ export async function createPortal(formData: FormData) {
     typeof formData.get("audioUrl") === "string"
       ? formData.get("audioUrl")!.toString().trim()
       : "";
+  const currentImage360Url = null;
   const audioUrl = uploadedAudioUrl ?? (currentAudioUrl || null);
+  const image360Url = uploadedImage360Url ?? currentImage360Url;
   const payload = buildPortalPayload(
     formData,
     uploadedImageUrl ?? currentImageUrl,
+    image360Url,
     audioUrl
   );
 
@@ -158,6 +202,11 @@ export async function updatePortal(id: string, formData: FormData) {
     supabase,
     "audio"
   );
+  const uploadedImage360Url = await maybeUpload360Image(
+    formData.get("image360File"),
+    slug,
+    supabase
+  );
   const currentImageUrl =
     typeof formData.get("imageUrl") === "string"
       ? formData.get("imageUrl")!.toString().trim()
@@ -166,10 +215,16 @@ export async function updatePortal(id: string, formData: FormData) {
     typeof formData.get("audioUrl") === "string"
       ? formData.get("audioUrl")!.toString().trim()
       : "";
+  const currentImage360Url =
+    typeof formData.get("image360Url") === "string"
+      ? formData.get("image360Url")!.toString().trim()
+      : "";
   const audioUrl = uploadedAudioUrl ?? (currentAudioUrl || null);
+  const image360Url = uploadedImage360Url ?? (currentImage360Url || null);
   const payload = buildPortalPayload(
     formData,
     uploadedImageUrl ?? currentImageUrl,
+    image360Url,
     audioUrl
   );
 
