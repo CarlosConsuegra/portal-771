@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { logout } from "@/app/admin/actions";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { listAdminPortals } from "@/lib/portals";
+import { listMaps } from "@/lib/maps";
 
-export default async function AdminPage() {
+export default async function AdminMapsPage() {
   await requireAdminSession();
-  const portals = await listAdminPortals();
+  const maps = await listMaps();
 
   return (
     <main className="portal-shell">
@@ -14,7 +14,7 @@ export default async function AdminPage() {
           <header className="flex flex-col gap-3">
             <p className="editorial-kicker">Admin</p>
             <h1 className="text-3xl leading-tight font-medium tracking-[-0.03em]">
-              Archivo Portal 771
+              Mapas
             </h1>
           </header>
           <form action={logout}>
@@ -29,19 +29,18 @@ export default async function AdminPage() {
 
         <div className="field-divider" />
 
-        <div>
+        <div className="flex items-center gap-6">
           <Link
-            href="/admin/new"
+            href="/admin"
             className="text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
           >
-            Crear nuevo portal
+            volver al archivo
           </Link>
-          <span className="mx-3 text-muted">|</span>
           <Link
-            href="/admin/mapas"
+            href="/admin/mapas/new"
             className="text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
           >
-            Gestionar mapas
+            Crear nuevo mapa
           </Link>
         </div>
 
@@ -49,21 +48,19 @@ export default async function AdminPage() {
           <table className="w-full min-w-[680px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
-                <th className="py-3 pr-4 font-normal">portal_id</th>
-                <th className="py-3 pr-4 font-normal">mapa_id</th>
-                <th className="py-3 pr-4 font-normal">estado</th>
+                <th className="py-3 pr-4 font-normal">slug</th>
+                <th className="py-3 pr-4 font-normal">titulo</th>
                 <th className="py-3 font-normal">editar</th>
               </tr>
             </thead>
             <tbody>
-              {portals.map((portal) => (
-                <tr key={portal.id} className="border-b border-line/80">
-                  <td className="py-4 pr-4 text-foreground">{portal.portalId}</td>
-                  <td className="py-4 pr-4 text-muted">{portal.mapId}</td>
-                  <td className="py-4 pr-4 text-muted">{portal.status}</td>
+              {maps.map((map) => (
+                <tr key={map.id} className="border-b border-line/80">
+                  <td className="py-4 pr-4 text-foreground">{map.slug}</td>
+                  <td className="py-4 pr-4 text-muted">{map.name}</td>
                   <td className="py-4">
                     <Link
-                      href={`/admin/portal/${portal.id}`}
+                      href={`/admin/mapas/${map.id}`}
                       className="text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
                     >
                       editar

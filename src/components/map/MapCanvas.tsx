@@ -12,7 +12,7 @@ export function MapCanvas({ map, portals }: MapCanvasProps) {
     <figure className="relative flex w-full h-full min-w-0 justify-center">
       <div className="relative w-full h-full min-w-0 max-w-full aspect-[1.72/1] overflow-hidden md:max-w-[1760px] md:overflow-visible">
         <Image
-          src="/images/maps/pachuca-base.png"
+          src={map.imageUrl}
           alt={map.name}
           fill
           priority

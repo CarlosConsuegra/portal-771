@@ -1,8 +1,10 @@
 export type MapRecord = {
   id: string;
+  slug: string;
   name: string;
   imageUrl: string;
   description?: string;
+  createdAt?: string;
 };
 
 export type PortalStatus = "draft" | "published";
@@ -39,5 +41,13 @@ export type PortalRow = {
   image_360_url?: string | null;
   audio_url: string | null;
   status: string;
+  created_at: string;
+};
+
+export type MapRow = {
+  id: string;
+  slug: string;
+  titulo: string;
+  image_url: string;
   created_at: string;
 };

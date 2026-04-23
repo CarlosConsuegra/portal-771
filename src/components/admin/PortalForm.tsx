@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   type ChangeEvent,
   type FormEvent,
+  type MouseEvent,
   type RefObject,
   useCallback,
   useEffect,
@@ -11,13 +12,15 @@ import {
   useRef,
   useState,
 } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { supabaseStorageBucket } from "@/lib/supabase/config";
-import { Portal } from "@/lib/types";
+import { MapRecord, Portal } from "@/lib/types";
 
 type PortalFormProps = {
   mode: "create" | "edit";
   portal?: Portal;
+  maps: MapRecord[];
   action: (formData: FormData) => void | Promise<void>;
 };
 
@@ -183,7 +186,7 @@ function validatePublishedData(formData: FormData): ValidationErrors {
   return errors;
 }
 
-export function PortalForm({ mode, portal, action }: PortalFormProps) {
+export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const image360InputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -192,8 +195,15 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
   const slugRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [statusValue, setStatusValue] = useState(portal?.status ?? "draft");
+  const [mapId, setMapId] = useState(portal?.mapId ?? maps[0]?.id ?? "mapa-771");
   const [image360Url, setImage360Url] = useState(portal?.imageUrl360 ?? "");
   const [audioUrl, setAudioUrl] = useState(portal?.audioUrl ?? "");
+  const [markerX, setMarkerX] = useState(
+    portal?.markerX !== undefined ? String(portal.markerX) : ""
+  );
+  const [markerY, setMarkerY] = useState(
+    portal?.markerY !== undefined ? String(portal.markerY) : ""
+  );
   const [image360UploadState, setImage360UploadState] = useState<
     "idle" | "uploading" | "success" | "error"
   >("idle");
@@ -206,6 +216,10 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
   const isPublishedMode = useMemo(
     () => statusValue.trim().toLowerCase() === "published",
     [statusValue]
+  );
+  const selectedMap = useMemo(
+    () => maps.find((map) => map.id === mapId) ?? maps[0] ?? null,
+    [maps, mapId]
   );
 
   const syncValidation = useCallback(() => {
@@ -229,6 +243,18 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
   useEffect(() => {
     syncValidation();
   }, [syncValidation]);
+
+  function handleMapClick(event: MouseEvent<HTMLButtonElement>) {
+    if (!selectedMap) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nextX = ((event.clientX - rect.left) / rect.width) * 100;
+    const nextY = ((event.clientY - rect.top) / rect.height) * 100;
+    setMarkerX(nextX.toFixed(2));
+    setMarkerY(nextY.toFixed(2));
+  }
 
   async function handle360Upload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -446,11 +472,12 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
           defaultValue={portal?.slug}
           error={errors.slug}
         />
-        <Field
+        <SelectField
           label="mapa_id"
           name="mapId"
-          defaultValue={portal?.mapId ?? "mapa-771"}
-          error={errors.mapId}
+          value={mapId}
+          onChange={(event) => setMapId(event.currentTarget.value)}
+          options={maps.map((map) => map.id)}
         />
         <Field
           label="título"
@@ -468,13 +495,15 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         <Field
           label="marker_x"
           name="markerX"
-          defaultValue={portal?.markerX}
+          value={markerX}
+          onChange={(event) => setMarkerX(event.currentTarget.value)}
           error={errors.marker}
         />
         <Field
           label="marker_y"
           name="markerY"
-          defaultValue={portal?.markerY}
+          value={markerY}
+          onChange={(event) => setMarkerY(event.currentTarget.value)}
           error={errors.marker}
         />
         <Field
@@ -497,6 +526,39 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
           error={errors.audio}
         />
       </div>
+
+      {selectedMap ? (
+        <div className="flex flex-col gap-3">
+          <span className="text-xs uppercase tracking-[0.18em] text-muted">
+            selector de marcador
+          </span>
+          <button
+            type="button"
+            onClick={handleMapClick}
+            className="relative aspect-[1.72/1] w-full overflow-hidden border border-line bg-[#efeee8] text-left"
+          >
+            <Image
+              src={selectedMap.imageUrl}
+              alt={selectedMap.name}
+              fill
+              sizes="(min-width: 1024px) 896px, 100vw"
+              className="object-contain object-center"
+            />
+            {markerX !== "" && markerY !== "" ? (
+              <span
+                className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-technical bg-background/90"
+                style={{
+                  left: `${markerX}%`,
+                  top: `${markerY}%`,
+                }}
+              />
+            ) : null}
+          </button>
+          <p className="quiet-label">
+            Haz clic sobre el mapa para fijar marker_x y marker_y.
+          </p>
+        </div>
+      ) : null}
 
       <label className="flex flex-col gap-3">
         <span className="text-xs uppercase tracking-[0.18em] text-muted">

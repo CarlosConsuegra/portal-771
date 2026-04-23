@@ -3,6 +3,7 @@ import { deletePortal, logout, updatePortal } from "@/app/admin/actions";
 import { DeletePortalButton } from "@/components/admin/DeletePortalButton";
 import { PortalForm } from "@/components/admin/PortalForm";
 import { requireAdminSession } from "@/lib/admin-auth";
+import { listMaps } from "@/lib/maps";
 import { getAdminPortalById } from "@/lib/portals";
 import Link from "next/link";
 
@@ -16,6 +17,7 @@ export default async function AdminPortalPage({
   await requireAdminSession();
   const { id } = await params;
   const portal = await getAdminPortalById(id);
+  const maps = await listMaps();
 
   if (!portal) {
     notFound();
@@ -56,7 +58,12 @@ export default async function AdminPortalPage({
             </Link>
             <DeletePortalButton action={deletePortalWithId} />
           </div>
-          <PortalForm mode="edit" portal={portal} action={updatePortalWithId} />
+          <PortalForm
+            mode="edit"
+            portal={portal}
+            maps={maps}
+            action={updatePortalWithId}
+          />
         </div>
       </div>
     </main>

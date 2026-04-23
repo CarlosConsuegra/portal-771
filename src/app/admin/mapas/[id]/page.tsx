@@ -1,12 +1,24 @@
-import { createPortal, logout } from "@/app/admin/actions";
-import { PortalForm } from "@/components/admin/PortalForm";
-import { requireAdminSession } from "@/lib/admin-auth";
-import { listMaps } from "@/lib/maps";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { logout, updateMap } from "@/app/admin/actions";
+import { MapForm } from "@/components/admin/MapForm";
+import { requireAdminSession } from "@/lib/admin-auth";
+import { getMapById } from "@/lib/maps";
 
-export default async function NewPortalPage() {
+type AdminMapPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function AdminMapPage({ params }: AdminMapPageProps) {
   await requireAdminSession();
-  const maps = await listMaps();
+  const { id } = await params;
+  const map = await getMapById(id);
+
+  if (!map) {
+    notFound();
+  }
+
+  const updateMapWithId = updateMap.bind(null, id);
 
   return (
     <main className="portal-shell">
@@ -15,7 +27,7 @@ export default async function NewPortalPage() {
           <header className="flex flex-col gap-3">
             <p className="editorial-kicker">Admin</p>
             <h1 className="text-3xl leading-tight font-medium tracking-[-0.03em]">
-              Nuevo portal
+              Editar mapa
             </h1>
           </header>
           <form action={logout}>
@@ -32,12 +44,12 @@ export default async function NewPortalPage() {
 
         <div className="mt-10">
           <Link
-            href="/admin"
+            href="/admin/mapas"
             className="mb-6 inline-flex text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
           >
-            volver al archivo
+            volver a mapas
           </Link>
-          <PortalForm mode="create" maps={maps} action={createPortal} />
+          <MapForm map={map} action={updateMapWithId} />
         </div>
       </div>
     </main>

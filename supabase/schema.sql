@@ -1,5 +1,36 @@
 create extension if not exists "pgcrypto";
 
+create table if not exists public.maps (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null,
+  titulo text not null,
+  image_url text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.maps enable row level security;
+
+drop policy if exists "maps are public" on public.maps;
+create policy "maps are public"
+on public.maps
+for select
+using (true);
+
+drop policy if exists "authenticated users can insert maps" on public.maps;
+create policy "authenticated users can insert maps"
+on public.maps
+for insert
+to authenticated
+with check (true);
+
+drop policy if exists "authenticated users can update maps" on public.maps;
+create policy "authenticated users can update maps"
+on public.maps
+for update
+to authenticated
+using (true)
+with check (true);
+
 create table if not exists public.portales (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,

@@ -1,11 +1,15 @@
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { PublicFooterNav } from "@/components/ui/PublicFooterNav";
-import { maps } from "@/data/maps";
+import { listMaps } from "@/lib/maps";
 import { listPublishedPortals } from "@/lib/portals";
 
 export default async function HomePage() {
-  const [mapRecord] = maps;
+  const [mapRecord] = await listMaps();
   const portals = await listPublishedPortals();
+
+  if (!mapRecord) {
+    return null;
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-[1840px] flex-col px-2 py-6 sm:py-12 md:px-3 md:pt-3 md:pb-5">

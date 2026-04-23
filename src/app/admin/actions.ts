@@ -295,3 +295,50 @@ export async function deletePortal(id: string) {
   revalidatePath("/admin");
   redirect("/admin");
 }
+
+export async function createMap(formData: FormData) {
+  const supabase = await requireAdminSession();
+
+  const payload = {
+    slug: parseRequiredString(formData.get("slug"), "slug"),
+    titulo: parseRequiredString(formData.get("titulo"), "titulo"),
+    image_url: parseRequiredString(formData.get("imageUrl"), "image_url"),
+  };
+
+  const { data, error } = await supabase
+    .from("maps")
+    .insert(payload)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`No se pudo crear el mapa: ${error.message}`);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/mapas");
+  revalidatePath("/admin/new");
+  redirect(`/admin/mapas/${data.id}`);
+}
+
+export async function updateMap(id: string, formData: FormData) {
+  const supabase = await requireAdminSession();
+
+  const payload = {
+    slug: parseRequiredString(formData.get("slug"), "slug"),
+    titulo: parseRequiredString(formData.get("titulo"), "titulo"),
+    image_url: parseRequiredString(formData.get("imageUrl"), "image_url"),
+  };
+
+  const { error } = await supabase.from("maps").update(payload).eq("id", id);
+
+  if (error) {
+    throw new Error(`No se pudo actualizar el mapa: ${error.message}`);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/mapas");
+  revalidatePath("/admin/new");
+  revalidatePath(`/admin/mapas/${id}`);
+  redirect(`/admin/mapas/${id}`);
+}
