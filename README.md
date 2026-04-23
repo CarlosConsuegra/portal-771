@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portal 771
 
-## Getting Started
+Portal 771 ya está preparado para funcionar con Supabase en una integración mínima:
 
-First, run the development server:
+- sitio público leyendo `portales` desde Supabase
+- auth simple para `/admin`
+- listado/create/edit del admin conectados a base de datos real
+- soporte de upload de imagen hacia Supabase Storage
+
+## Configuración
+
+1. Copia `.env.example` a `.env.local`.
+2. Completa estas variables:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=images
+RESEND_API_KEY=...
+CONTACT_NOTIFICATION_TO=...
+CONTACT_FROM=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. En Supabase, crea la tabla, bucket y políticas ejecutando:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sql
+-- ver archivo completo
+supabase/schema.sql
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Crea manualmente al menos un usuario admin en Supabase Auth.
+   Ese usuario podrá entrar en `/admin/login`.
 
-## Learn More
+## Flujo actual
 
-To learn more about Next.js, take a look at the following resources:
+- Público:
+  - `/` lee portales publicados desde Supabase
+  - `/portal/[id]` resuelve el `id` público usando el `slug`
+- Admin:
+  - `/admin/login` usa email/password de Supabase Auth
+  - `/admin` lista todos los portales
+  - `/admin/new` crea un portal
+  - `/admin/portal/[id]` edita un portal por `uuid`
+- Storage:
+  - si en el formulario admin subes `image_file`, se sube al bucket configurado
+  - si en el formulario admin subes `audio_file`, se sube al mismo bucket configurado
+  - si no subes archivo, se usa `image_url`
+- Contacto:
+  - `/contacto` guarda mensajes en `contact_messages`
+  - después envía una notificación por Resend a `CONTACT_NOTIFICATION_TO`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Modelo esperado
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Tabla `portales`:
 
-## Deploy on Vercel
+- `id uuid primary key`
+- `slug text unique`
+- `titulo text`
+- `narrativa text`
+- `mapa_id text`
+- `marker_x numeric`
+- `marker_y numeric`
+- `lat numeric nullable`
+- `lng numeric nullable`
+- `image_url text`
+- `audio_url text nullable`
+- `status text`
+- `created_at timestamp default now()`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Desarrollo
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+npm run dev
+```
+
+## Validación
+
+```bash
+npm run lint
+npm run build
+```

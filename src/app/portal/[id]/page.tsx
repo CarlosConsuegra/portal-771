@@ -1,0 +1,39 @@
+import { notFound } from "next/navigation";
+import { EditorialLink } from "@/components/ui/EditorialLink";
+import { PortalImage } from "@/components/portal/PortalImage";
+import { PortalNarrative } from "@/components/portal/PortalNarrative";
+import { PublicFooterNav } from "@/components/ui/PublicFooterNav";
+import { getPublishedPortalBySlug } from "@/lib/portals";
+
+type PortalPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function PortalPage({ params }: PortalPageProps) {
+  const { id } = await params;
+  const portal = await getPublishedPortalBySlug(id);
+
+  if (!portal || portal.status !== "published") {
+    notFound();
+  }
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-[1760px] flex-col px-3 pt-3 pb-4 md:px-5 md:pt-4 md:pb-5">
+      <div className="max-w-5xl">
+        <EditorialLink href="/">regresar</EditorialLink>
+      </div>
+
+      <section className="mt-2 flex flex-1 flex-col gap-1.5 md:mt-3 md:gap-2">
+        <h1 className="text-[2.45rem] leading-none font-medium tracking-[-0.05em] text-foreground md:text-[3rem]">
+          portal 771
+        </h1>
+        <PortalImage title={portal.title} imageUrl={portal.imageUrl} />
+        <PortalNarrative
+          narrative={portal.narrative}
+          audioUrl={portal.audioUrl}
+        />
+      </section>
+      <PublicFooterNav className="mt-2" />
+    </main>
+  );
+}
