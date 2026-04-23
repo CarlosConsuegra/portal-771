@@ -1,6 +1,7 @@
 import { createPortal, logout } from "@/app/admin/actions";
 import { PortalForm } from "@/components/admin/PortalForm";
 import { requireAdminSession } from "@/lib/admin-auth";
+import Link from "next/link";
 
 export default async function NewPortalPage() {
   await requireAdminSession();
@@ -28,6 +29,12 @@ export default async function NewPortalPage() {
         <div className="mt-8 field-divider" />
 
         <div className="mt-10">
+          <Link
+            href="/admin"
+            className="mb-6 inline-flex text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
+          >
+            volver al archivo
+          </Link>
           <PortalForm mode="create" action={createPortal} />
         </div>
       </div>

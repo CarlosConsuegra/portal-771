@@ -3,6 +3,7 @@ import { logout, updatePortal } from "@/app/admin/actions";
 import { PortalForm } from "@/components/admin/PortalForm";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { getAdminPortalById } from "@/lib/portals";
+import Link from "next/link";
 
 type AdminPortalPageProps = {
   params: Promise<{ id: string }>;
@@ -44,6 +45,12 @@ export default async function AdminPortalPage({
         <div className="mt-8 field-divider" />
 
         <div className="mt-10">
+          <Link
+            href="/admin"
+            className="mb-6 inline-flex text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
+          >
+            volver al archivo
+          </Link>
           <PortalForm mode="edit" portal={portal} action={updatePortalWithId} />
         </div>
       </div>

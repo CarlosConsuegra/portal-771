@@ -38,14 +38,14 @@ export function PortalNarrative({
           <button
             type="button"
             onClick={toggleAudio}
-            className="mb-2 inline-flex items-center gap-1.5 px-3 py-2 text-sm text-muted transition-opacity hover:opacity-70 sm:text-xs md:text-[0.72rem]"
+            className="mb-2 inline-flex items-center gap-1.5 border border-line px-3 py-2 text-sm text-muted transition-opacity hover:opacity-70 sm:text-xs md:text-[0.72rem]"
             aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}
           >
             <span
               aria-hidden="true"
               className="inline-block h-1.5 w-1.5 rounded-full bg-muted"
             />
-            <span>audio</span>
+            <span>{isPlaying ? "pausar audio" : "audio"}</span>
           </button>
           <audio
             ref={audioRef}

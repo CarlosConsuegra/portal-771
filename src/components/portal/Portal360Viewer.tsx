@@ -21,6 +21,8 @@ export function Portal360Viewer({
   const [gyroEnabled, setGyroEnabled] = useState(false);
   const [gyroError, setGyroError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
+  const isFullscreenActive = isFullscreen || isFallbackFullscreen;
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -33,6 +35,22 @@ export function Portal360Viewer({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!viewerRef.current) {
+      return;
+    }
+
+    document.body.style.overflow = isFullscreenActive ? "hidden" : "";
+    const timeout = window.setTimeout(() => {
+      viewerRef.current?.autoSize();
+    }, 50);
+
+    return () => {
+      window.clearTimeout(timeout);
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreenActive]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -102,22 +120,65 @@ export function Portal360Viewer({
       return;
     }
 
+    const shell = shellRef.current as HTMLDivElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    };
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+
     if (document.fullscreenElement === shellRef.current) {
       await document.exitFullscreen();
       return;
     }
 
-    await shellRef.current.requestFullscreen();
+    if (isFallbackFullscreen) {
+      setIsFallbackFullscreen(false);
+      return;
+    }
+
+    try {
+      if (typeof shell.requestFullscreen === "function") {
+        await shell.requestFullscreen();
+        return;
+      }
+
+      if (typeof shell.webkitRequestFullscreen === "function") {
+        await shell.webkitRequestFullscreen();
+        return;
+      }
+
+      if (
+        document.fullscreenElement &&
+        typeof doc.webkitExitFullscreen === "function"
+      ) {
+        await doc.webkitExitFullscreen();
+        return;
+      }
+    } catch {
+      // Fallback below.
+    }
+
+    setIsFallbackFullscreen(true);
   }
 
   return (
     <figure className="w-full">
       <div className="mt-0.5 w-full md:mt-1">
-        <div ref={shellRef} className="relative mx-auto w-full max-w-[1680px]">
+        <div
+          ref={shellRef}
+          className={`relative mx-auto w-full bg-background ${
+            isFullscreenActive
+              ? "fixed inset-0 z-50 max-w-none p-0"
+              : "max-w-[1680px]"
+          }`}
+        >
           <div
             ref={containerRef}
             aria-label={`${title} en vista 360`}
-            className="map-paper h-[60vh] max-h-[70vh] w-full"
+            className={`map-paper w-full ${
+              isFullscreenActive ? "h-screen max-h-none" : "h-[60vh] max-h-[70vh]"
+            }`}
           />
 
           <button
@@ -125,7 +186,7 @@ export function Portal360Viewer({
             onClick={toggleFullscreen}
             className="absolute top-3 left-3 border border-line bg-background/92 px-3 py-2 text-[0.72rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
           >
-            {isFullscreen ? "cerrar" : "fullscreen"}
+            {isFullscreenActive ? "cerrar" : "fullscreen"}
           </button>
 
           {gyroSupported ? (

@@ -71,8 +71,7 @@ function Field({
           ref={inputRef as RefObject<HTMLTextAreaElement>}
           name={name}
           rows={rows}
-          defaultValue={defaultValue}
-          value={value}
+          {...(value !== undefined ? { value } : { defaultValue })}
           onChange={onChange}
           className={`${baseClassName} resize-y`}
         />
@@ -81,8 +80,7 @@ function Field({
           ref={inputRef as RefObject<HTMLInputElement>}
           type={type}
           name={name}
-          defaultValue={defaultValue}
-          value={value}
+          {...(value !== undefined ? { value } : { defaultValue })}
           onChange={onChange}
           className={baseClassName}
         />
@@ -460,6 +458,12 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
           name="imageUrl"
           defaultValue={portal?.imageUrl}
           error={errors.image360}
+        />
+        <Field
+          label="image_360_url"
+          name="image_360_url_display"
+          value={image360Url}
+          onChange={(event) => setImage360Url(event.currentTarget.value)}
         />
         <Field
           label="audio_url"
