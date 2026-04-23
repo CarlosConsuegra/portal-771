@@ -22,7 +22,7 @@ export function MapCanvas({ map, portals }: MapCanvasProps) {
 
         <div className="absolute inset-0">
           {portals.map((portal) => (
-            <MapMarker key={portal.id} portal={portal} />
+            <MapMarker key={portal.id} portal={portal} mapId={map.id} />
           ))}
         </div>
       </div>

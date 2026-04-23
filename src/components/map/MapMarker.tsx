@@ -3,9 +3,10 @@ import { Portal } from "@/lib/types";
 
 type MapMarkerProps = {
   portal: Portal;
+  mapId?: string;
 };
 
-export function MapMarker({ portal }: MapMarkerProps) {
+export function MapMarker({ portal, mapId }: MapMarkerProps) {
   const variant = portal.portalId.charCodeAt(portal.portalId.length - 1) % 3;
   const markerSize = variant === 0 ? "3rem" : variant === 1 ? "2.75rem" : "2.9rem";
   const crossLength = variant === 0 ? "1.45rem" : variant === 1 ? "1.3rem" : "1.38rem";
@@ -13,7 +14,9 @@ export function MapMarker({ portal }: MapMarkerProps) {
 
   return (
     <Link
-      href={`/portal/${portal.slug}`}
+      href={
+        mapId ? `/portal/${portal.slug}?map=${encodeURIComponent(mapId)}` : `/portal/${portal.slug}`
+      }
       className="group absolute -translate-x-1/2 -translate-y-1/2"
       style={{
         left: `${portal.markerX}%`,
