@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { logout, updatePortal } from "@/app/admin/actions";
+import { deletePortal, logout, updatePortal } from "@/app/admin/actions";
+import { DeletePortalButton } from "@/components/admin/DeletePortalButton";
 import { PortalForm } from "@/components/admin/PortalForm";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { getAdminPortalById } from "@/lib/portals";
@@ -21,6 +22,7 @@ export default async function AdminPortalPage({
   }
 
   const updatePortalWithId = updatePortal.bind(null, id);
+  const deletePortalWithId = deletePortal.bind(null, id);
 
   return (
     <main className="portal-shell">
@@ -45,12 +47,15 @@ export default async function AdminPortalPage({
         <div className="mt-8 field-divider" />
 
         <div className="mt-10">
-          <Link
-            href="/admin"
-            className="mb-6 inline-flex text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
-          >
-            volver al archivo
-          </Link>
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <Link
+              href="/admin"
+              className="inline-flex text-sm text-technical underline underline-offset-4 transition-opacity hover:opacity-70"
+            >
+              volver al archivo
+            </Link>
+            <DeletePortalButton action={deletePortalWithId} />
+          </div>
           <PortalForm mode="edit" portal={portal} action={updatePortalWithId} />
         </div>
       </div>

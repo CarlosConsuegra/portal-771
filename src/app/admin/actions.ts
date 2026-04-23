@@ -281,3 +281,17 @@ export async function updatePortal(id: string, formData: FormData) {
   revalidatePath(`/portal/${payload.slug}`);
   redirect(`/admin/portal/${id}`);
 }
+
+export async function deletePortal(id: string) {
+  const supabase = await requireAdminSession();
+
+  const { error } = await supabase.from("portales").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(`No se pudo eliminar el portal: ${error.message}`);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
