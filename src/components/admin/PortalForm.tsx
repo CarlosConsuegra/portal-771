@@ -33,6 +33,14 @@ type FieldProps = {
   onChange?: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 };
 
+type SelectFieldProps = {
+  label: string;
+  name: string;
+  value: string;
+  options: string[];
+  onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+};
+
 type ValidationErrors = Partial<
   Record<
     | "global"
@@ -86,6 +94,37 @@ function Field({
         />
       )}
       {error ? <p className="text-sm text-technical">{error}</p> : null}
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  name,
+  value,
+  options,
+  onChange,
+}: SelectFieldProps) {
+  const baseClassName =
+    "min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors focus:border-technical";
+
+  return (
+    <label className="flex flex-col gap-3">
+      <span className="text-xs uppercase tracking-[0.18em] text-muted">
+        {label}
+      </span>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        className={baseClassName}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -419,10 +458,12 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
           defaultValue={portal?.title}
           error={errors.titulo}
         />
-        <Field
+        <SelectField
           label="estado"
           name="status"
-          defaultValue={portal?.status ?? "draft"}
+          value={statusValue}
+          onChange={(event) => setStatusValue(event.currentTarget.value)}
+          options={["draft", "published"]}
         />
         <Field
           label="marker_x"
