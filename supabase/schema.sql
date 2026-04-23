@@ -16,6 +16,9 @@ create table if not exists public.portales (
   created_at timestamptz not null default now()
 );
 
+alter table public.portales
+add column if not exists image_url_360 text null;
+
 alter table public.portales enable row level security;
 
 drop policy if exists "published portales are public" on public.portales;

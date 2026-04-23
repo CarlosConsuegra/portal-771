@@ -3,8 +3,7 @@ import { portals as mockPortals } from "@/data/portals";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-const PORTAL_COLUMNS =
-  "id, slug, titulo, narrativa, mapa_id, marker_x, marker_y, lat, lng, image_url, audio_url, status, created_at";
+const PORTAL_COLUMNS = "*";
 
 function mapRowToPortal(row: PortalRow): Portal {
   return {
@@ -14,6 +13,7 @@ function mapRowToPortal(row: PortalRow): Portal {
     title: row.titulo,
     narrative: row.narrativa,
     imageUrl: row.image_url,
+    imageUrl360: row.image_url_360 ?? null,
     mapId: row.mapa_id,
     lat: row.lat,
     lng: row.lng,

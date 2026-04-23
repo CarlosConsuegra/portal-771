@@ -14,6 +14,7 @@ export type Portal = {
   title: string;
   narrative: string;
   imageUrl: string;
+  imageUrl360?: string | null;
   mapId: string;
   lat: number | null;
   lng: number | null;
@@ -35,6 +36,7 @@ export type PortalRow = {
   lat: number | null;
   lng: number | null;
   image_url: string;
+  image_url_360?: string | null;
   audio_url: string | null;
   status: string;
   created_at: string;

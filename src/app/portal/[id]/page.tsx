@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { EditorialLink } from "@/components/ui/EditorialLink";
-import { PortalImage } from "@/components/portal/PortalImage";
+import { PortalMedia } from "@/components/portal/PortalMedia";
 import { PortalNarrative } from "@/components/portal/PortalNarrative";
 import { PublicFooterNav } from "@/components/ui/PublicFooterNav";
 import { getPublishedPortalBySlug } from "@/lib/portals";
@@ -27,7 +27,11 @@ export default async function PortalPage({ params }: PortalPageProps) {
         <h1 className="text-[2.45rem] leading-none font-medium tracking-[-0.05em] text-foreground md:text-[3rem]">
           portal 771
         </h1>
-        <PortalImage title={portal.title} imageUrl={portal.imageUrl} />
+        <PortalMedia
+          title={portal.title}
+          imageUrl={portal.imageUrl}
+          imageUrl360={portal.imageUrl360}
+        />
         <PortalNarrative
           narrative={portal.narrative}
           audioUrl={portal.audioUrl}
