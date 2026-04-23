@@ -17,6 +17,14 @@ function parseRequiredString(value: FormDataEntryValue | null, label: string) {
   return value.trim();
 }
 
+function parseOptionalString(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function hasFile(value: FormDataEntryValue | null) {
+  return value instanceof File && value.size > 0;
+}
+
 async function maybeUploadFile(
   file: FormDataEntryValue | null,
   slug: string,
@@ -55,36 +63,6 @@ async function maybeUploadFile(
   return publicUrl;
 }
 
-async function maybeUpload360Image(
-  file: FormDataEntryValue | null,
-  slug: string,
-  supabase: Awaited<ReturnType<typeof createClient>>
-) {
-  if (!(file instanceof File) || file.size === 0) {
-    return null;
-  }
-
-  const path = `portales/360/${slug}.jpg`;
-
-  const { error } = await supabase.storage
-    .from(supabaseStorageBucket)
-    .upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType: file.type || "image/jpeg",
-    });
-
-  if (error) {
-    throw new Error(`No se pudo subir la imagen 360: ${error.message}`);
-  }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(supabaseStorageBucket).getPublicUrl(path);
-
-  return publicUrl;
-}
-
 function buildPortalPayload(
   formData: FormData,
   titulo: string,
@@ -104,6 +82,54 @@ function buildPortalPayload(
     audio_url: audioUrl,
     status: parseRequiredString(formData.get("status"), "status"),
   };
+}
+
+function validatePublishedPortal(
+  formData: FormData,
+  titulo: string,
+  imageUrl: string,
+  image360Url: string | null
+) {
+  const status = parseOptionalString(formData.get("status")).toLowerCase();
+
+  if (status !== "published") {
+    return;
+  }
+
+  const slug = parseOptionalString(formData.get("slug"));
+  const narrative = parseOptionalString(formData.get("narrative"));
+  const mapId = parseOptionalString(formData.get("mapId"));
+  const markerX = parseOptionalString(formData.get("markerX"));
+  const markerY = parseOptionalString(formData.get("markerY"));
+
+  if (!slug) {
+    throw new Error("Falta slug");
+  }
+
+  if (!titulo) {
+    throw new Error("Falta titulo");
+  }
+
+  if (!narrative) {
+    throw new Error("Falta narrativa");
+  }
+
+  if (!mapId) {
+    throw new Error("Falta mapa_id");
+  }
+
+  if (
+    markerX === "" ||
+    markerY === "" ||
+    !Number.isFinite(Number(markerX)) ||
+    !Number.isFinite(Number(markerY))
+  ) {
+    throw new Error("Faltan coordenadas del marcador");
+  }
+
+  if (!imageUrl && !image360Url && !hasFile(formData.get("imageFile"))) {
+    throw new Error("Falta imagen");
+  }
 }
 
 export async function login(formData: FormData) {
@@ -147,6 +173,17 @@ export async function createPortal(formData: FormData) {
 
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
+  const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
+  const currentAudioUrl = parseOptionalString(formData.get("audioUrl"));
+  const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
+
+  validatePublishedPortal(
+    formData,
+    titulo,
+    currentImageUrl,
+    currentImage360Url || null
+  );
+
   const uploadedImageUrl = await maybeUploadFile(
     formData.get("imageFile"),
     slug,
@@ -159,22 +196,8 @@ export async function createPortal(formData: FormData) {
     supabase,
     "audio"
   );
-  const uploadedImage360Url = await maybeUpload360Image(
-    formData.get("image360File"),
-    slug,
-    supabase
-  );
-  const currentImageUrl =
-    typeof formData.get("imageUrl") === "string"
-      ? formData.get("imageUrl")!.toString().trim()
-      : "";
-  const currentAudioUrl =
-    typeof formData.get("audioUrl") === "string"
-      ? formData.get("audioUrl")!.toString().trim()
-      : "";
-  const currentImage360Url = null;
   const audioUrl = uploadedAudioUrl ?? (currentAudioUrl || null);
-  const image360Url = uploadedImage360Url ?? currentImage360Url;
+  const image360Url = currentImage360Url || null;
   const payload = buildPortalPayload(
     formData,
     titulo,
@@ -210,6 +233,17 @@ export async function updatePortal(id: string, formData: FormData) {
 
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
+  const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
+  const currentAudioUrl = parseOptionalString(formData.get("audioUrl"));
+  const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
+
+  validatePublishedPortal(
+    formData,
+    titulo,
+    currentImageUrl,
+    currentImage360Url || null
+  );
+
   const uploadedImageUrl = await maybeUploadFile(
     formData.get("imageFile"),
     slug,
@@ -222,25 +256,8 @@ export async function updatePortal(id: string, formData: FormData) {
     supabase,
     "audio"
   );
-  const uploadedImage360Url = await maybeUpload360Image(
-    formData.get("image360File"),
-    slug,
-    supabase
-  );
-  const currentImageUrl =
-    typeof formData.get("imageUrl") === "string"
-      ? formData.get("imageUrl")!.toString().trim()
-      : "";
-  const currentAudioUrl =
-    typeof formData.get("audioUrl") === "string"
-      ? formData.get("audioUrl")!.toString().trim()
-      : "";
-  const currentImage360Url =
-    typeof formData.get("image360Url") === "string"
-      ? formData.get("image360Url")!.toString().trim()
-      : "";
   const audioUrl = uploadedAudioUrl ?? (currentAudioUrl || null);
-  const image360Url = uploadedImage360Url ?? (currentImage360Url || null);
+  const image360Url = currentImage360Url || null;
   const payload = buildPortalPayload(
     formData,
     titulo,
