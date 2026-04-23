@@ -3,7 +3,7 @@ import { EditorialLink } from "@/components/ui/EditorialLink";
 import { PortalMedia } from "@/components/portal/PortalMedia";
 import { PortalNarrative } from "@/components/portal/PortalNarrative";
 import { PublicFooterNav } from "@/components/ui/PublicFooterNav";
-import { getPublishedPortalBySlug, listPublishedPortals } from "@/lib/portals";
+import { getPublishedPortalBySlug } from "@/lib/portals";
 
 type PortalPageProps = {
   params: Promise<{ id: string }>;
@@ -20,37 +20,12 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   }
 
   const currentMapId = requestedMapId || portal.mapId;
-  const mapPortals = (await listPublishedPortals()).filter(
-    (item) => item.mapId === currentMapId
-  );
-  const currentIndex = mapPortals.findIndex((item) => item.id === portal.id);
-  const previousPortal = currentIndex > 0 ? mapPortals[currentIndex - 1] : null;
-  const nextPortal =
-    currentIndex >= 0 && currentIndex < mapPortals.length - 1
-      ? mapPortals[currentIndex + 1]
-      : null;
   const mapHref = currentMapId ? `/?map=${encodeURIComponent(currentMapId)}` : "/";
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1760px] flex-col px-4 pt-3 pb-4 sm:px-8 md:px-5 md:pt-4 md:pb-5">
-      <div className="flex max-w-5xl flex-wrap items-center justify-between gap-4">
+      <div className="max-w-5xl">
         <EditorialLink href={mapHref}>volver al mapa</EditorialLink>
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          {previousPortal ? (
-            <EditorialLink
-              href={`/portal/${previousPortal.slug}?map=${encodeURIComponent(currentMapId)}`}
-            >
-              anterior
-            </EditorialLink>
-          ) : null}
-          {nextPortal ? (
-            <EditorialLink
-              href={`/portal/${nextPortal.slug}?map=${encodeURIComponent(currentMapId)}`}
-            >
-              siguiente
-            </EditorialLink>
-          ) : null}
-        </div>
       </div>
 
       <section className="mt-2 flex flex-1 flex-col gap-1.5 md:mt-3 md:gap-2">
