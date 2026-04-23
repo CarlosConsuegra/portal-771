@@ -32,13 +32,13 @@ export function PortalNarrative({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[42rem] flex-col items-center px-3 text-center md:px-0">
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center px-3 text-center md:max-w-[42rem] md:px-0">
       {audioUrl ? (
         <>
           <button
             type="button"
             onClick={toggleAudio}
-            className="mb-2 inline-flex items-center gap-1.5 text-[0.72rem] text-muted transition-opacity hover:opacity-70"
+            className="mb-2 inline-flex items-center gap-1.5 px-3 py-2 text-sm text-muted transition-opacity hover:opacity-70 sm:text-xs md:text-[0.72rem]"
             aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}
           >
             <span
@@ -57,7 +57,7 @@ export function PortalNarrative({
           />
         </>
       ) : null}
-      <p className="text-[1rem] leading-[2.05] font-normal text-[#262626]">
+      <p className="text-base leading-[2.05] font-normal text-[#262626] sm:text-lg md:text-[1rem]">
         {narrative}
       </p>
     </div>

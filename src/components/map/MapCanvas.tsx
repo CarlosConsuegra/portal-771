@@ -9,8 +9,8 @@ type MapCanvasProps = {
 
 export function MapCanvas({ map, portals }: MapCanvasProps) {
   return (
-    <figure className="relative flex h-full w-full justify-center">
-      <div className="relative h-full aspect-[1.72/1] w-full max-w-[1760px] overflow-visible">
+    <figure className="relative flex w-full h-full min-w-0 justify-center">
+      <div className="relative w-full h-full min-w-0 max-w-full aspect-[1.72/1] overflow-hidden md:max-w-[1760px] md:overflow-visible">
         <Image
           src="/images/maps/pachuca-base.png"
           alt={map.name}

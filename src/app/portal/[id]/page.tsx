@@ -18,7 +18,7 @@ export default async function PortalPage({ params }: PortalPageProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1760px] flex-col px-3 pt-3 pb-4 md:px-5 md:pt-4 md:pb-5">
+    <main className="mx-auto flex min-h-screen w-full max-w-[1760px] flex-col px-4 pt-3 pb-4 sm:px-8 md:px-5 md:pt-4 md:pb-5">
       <div className="max-w-5xl">
         <EditorialLink href="/">regresar</EditorialLink>
       </div>

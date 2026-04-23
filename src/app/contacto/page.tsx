@@ -4,7 +4,7 @@ import { PublicFooterNav } from "@/components/ui/PublicFooterNav";
 
 export default function ContactoPage() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1280px] flex-col px-5 pt-6 pb-6 md:px-8 md:pt-8 md:pb-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-[1280px] flex-col px-4 pt-6 pb-6 leading-relaxed sm:px-8 md:pt-8 md:pb-8">
       <div>
         <EditorialLink href="/">regresar</EditorialLink>
       </div>
