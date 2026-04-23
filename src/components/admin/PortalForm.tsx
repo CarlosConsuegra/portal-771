@@ -147,9 +147,7 @@ function validatePublishedData(formData: FormData): ValidationErrors {
 export function PortalForm({ mode, portal, action }: PortalFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const image360InputRef = useRef<HTMLInputElement>(null);
-  const image360UrlRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const audioUrlRef = useRef<HTMLInputElement>(null);
   const submitBypassRef = useRef(false);
   const slugRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -241,9 +239,6 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       } = supabase.storage.from(supabaseStorageBucket).getPublicUrl(path);
 
       setImage360Url(publicUrl);
-      if (image360UrlRef.current) {
-        image360UrlRef.current.value = publicUrl;
-      }
       event.target.value = "";
       setImage360UploadState("success");
       setImage360UploadMessage("Imagen 360 subida.");
@@ -304,9 +299,6 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       } = supabase.storage.from(supabaseStorageBucket).getPublicUrl(path);
 
       setAudioUrl(publicUrl);
-      if (audioUrlRef.current) {
-        audioUrlRef.current.value = publicUrl;
-      }
       event.target.value = "";
       setAudioUploadState("success");
       setAudioUploadMessage("Audio subido.");
@@ -363,9 +355,8 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       }
 
       const image360UploadedOk =
-        image360UrlRef.current?.value.trim() || !image360InputRef.current?.value;
-      const audioUploadedOk =
-        audioUrlRef.current?.value.trim() || !audioInputRef.current?.value;
+        image360Url.trim() || !image360InputRef.current?.value;
+      const audioUploadedOk = audioUrl.trim() || !audioInputRef.current?.value;
 
       if (!image360UploadedOk || !audioUploadedOk) {
         setErrors((current) => ({
@@ -399,21 +390,6 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       onSubmit={handleSubmit}
       className="flex flex-col gap-10"
     >
-      <input
-        ref={image360UrlRef}
-        type="hidden"
-        name="image_360_url"
-        value={image360Url}
-        readOnly
-      />
-      <input
-        ref={audioUrlRef}
-        type="hidden"
-        name="audio_url"
-        value={audioUrl}
-        readOnly
-      />
-
       {errors.global ? <p className="text-sm text-technical">{errors.global}</p> : null}
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -461,13 +437,13 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         />
         <Field
           label="image_360_url"
-          name="image_360_url_display"
+          name="image_360_url"
           value={image360Url}
           onChange={(event) => setImage360Url(event.currentTarget.value)}
         />
         <Field
           label="audio_url"
-          name="audio_url_display"
+          name="audio_url"
           value={audioUrl}
           onChange={(event) => setAudioUrl(event.currentTarget.value)}
           error={errors.audio}
