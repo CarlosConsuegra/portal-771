@@ -148,6 +148,7 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const image360InputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const audioUrlRef = useRef<HTMLInputElement>(null);
   const submitBypassRef = useRef(false);
   const slugRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -299,6 +300,9 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       } = supabase.storage.from(supabaseStorageBucket).getPublicUrl(path);
 
       setAudioUrl(publicUrl);
+      if (audioUrlRef.current) {
+        audioUrlRef.current.value = publicUrl;
+      }
       event.target.value = "";
       setAudioUploadState("success");
       setAudioUploadMessage("Audio subido.");
@@ -356,7 +360,8 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
 
       const image360UploadedOk =
         image360Url.trim() || !image360InputRef.current?.value;
-      const audioUploadedOk = audioUrl.trim() || !audioInputRef.current?.value;
+      const audioUploadedOk =
+        audioUrlRef.current?.value.trim() || !audioInputRef.current?.value;
 
       if (!image360UploadedOk || !audioUploadedOk) {
         setErrors((current) => ({
@@ -390,6 +395,8 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       onSubmit={handleSubmit}
       className="flex flex-col gap-10"
     >
+      <input ref={audioUrlRef} type="hidden" name="audio_url" value={audioUrl} readOnly />
+
       {errors.global ? <p className="text-sm text-technical">{errors.global}</p> : null}
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -443,7 +450,7 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         />
         <Field
           label="audio_url"
-          name="audio_url"
+          name="audio_url_display"
           value={audioUrl}
           onChange={(event) => setAudioUrl(event.currentTarget.value)}
           error={errors.audio}

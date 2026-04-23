@@ -160,6 +160,7 @@ export async function logout() {
 export async function createPortal(formData: FormData) {
   console.log([...formData.entries()]);
   console.log("FORM DATA", Object.fromEntries(formData.entries()));
+  console.log("AUDIO_URL_FORM", formData.get("audio_url"));
   const tituloRaw = formData.get("titulo");
   const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
 
@@ -190,6 +191,7 @@ export async function createPortal(formData: FormData) {
   );
   const audioUrl = currentAudioUrl || null;
   const image360Url = currentImage360Url || null;
+  console.log("AUDIO_URL_SAVE", audioUrl);
   const payload = buildPortalPayload(
     formData,
     titulo,
@@ -216,6 +218,7 @@ export async function createPortal(formData: FormData) {
 export async function updatePortal(id: string, formData: FormData) {
   console.log([...formData.entries()]);
   console.log("FORM DATA", Object.fromEntries(formData.entries()));
+  console.log("AUDIO_URL_FORM", formData.get("audio_url"));
   const tituloRaw = formData.get("titulo");
   const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
 
@@ -244,8 +247,21 @@ export async function updatePortal(id: string, formData: FormData) {
     supabase,
     "images"
   );
-  const audioUrl = currentAudioUrl || null;
+  const { data: existingPortal, error: existingPortalError } = await supabase
+    .from("portales")
+    .select("audio_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingPortalError) {
+    throw new Error(
+      `No se pudo leer el audio actual del portal: ${existingPortalError.message}`
+    );
+  }
+
+  const audioUrl = currentAudioUrl || existingPortal?.audio_url || null;
   const image360Url = currentImage360Url || null;
+  console.log("AUDIO_URL_SAVE", audioUrl);
   const payload = buildPortalPayload(
     formData,
     titulo,
