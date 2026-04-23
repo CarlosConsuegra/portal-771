@@ -13,12 +13,26 @@ export function Portal360Viewer({
   title,
   panoramaUrl,
 }: Portal360ViewerProps) {
+  const shellRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const gyroscopeRef = useRef<GyroscopePlugin | null>(null);
   const [gyroSupported, setGyroSupported] = useState(false);
   const [gyroEnabled, setGyroEnabled] = useState(false);
   const [gyroError, setGyroError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === shellRef.current);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -83,15 +97,36 @@ export function Portal360Viewer({
     }
   }
 
+  async function toggleFullscreen() {
+    if (!shellRef.current) {
+      return;
+    }
+
+    if (document.fullscreenElement === shellRef.current) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await shellRef.current.requestFullscreen();
+  }
+
   return (
     <figure className="w-full">
       <div className="mt-0.5 w-full md:mt-1">
-        <div className="relative mx-auto w-full max-w-[1680px]">
+        <div ref={shellRef} className="relative mx-auto w-full max-w-[1680px]">
           <div
             ref={containerRef}
             aria-label={`${title} en vista 360`}
             className="map-paper h-[60vh] max-h-[70vh] w-full"
           />
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="absolute top-3 left-3 border border-line bg-background/92 px-3 py-2 text-[0.72rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+          >
+            {isFullscreen ? "cerrar" : "fullscreen"}
+          </button>
 
           {gyroSupported ? (
             <button

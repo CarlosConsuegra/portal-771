@@ -29,18 +29,14 @@ async function maybeUploadFile(
   file: FormDataEntryValue | null,
   slug: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
-  folder: "images" | "audio"
+  folder: "images"
 ) {
   if (!(file instanceof File) || file.size === 0) {
     return null;
   }
 
-  const fallbackExtension = folder === "audio" ? "mp3" : "jpg";
+  const fallbackExtension = "jpg";
   const extension = (file.name.split(".").pop() ?? fallbackExtension).toLowerCase();
-
-  if (folder === "audio" && !["mp3", "ogg"].includes(extension)) {
-    throw new Error("El audio debe ser .mp3 u .ogg.");
-  }
 
   const path = `${slug}/${folder}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
@@ -174,7 +170,9 @@ export async function createPortal(formData: FormData) {
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
   const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
-  const currentAudioUrl = parseOptionalString(formData.get("audioUrl"));
+  const currentAudioUrl =
+    parseOptionalString(formData.get("audio_url")) ||
+    parseOptionalString(formData.get("audioUrl"));
   const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
 
   validatePublishedPortal(
@@ -190,13 +188,7 @@ export async function createPortal(formData: FormData) {
     supabase,
     "images"
   );
-  const uploadedAudioUrl = await maybeUploadFile(
-    formData.get("audioFile"),
-    slug,
-    supabase,
-    "audio"
-  );
-  const audioUrl = uploadedAudioUrl ?? (currentAudioUrl || null);
+  const audioUrl = currentAudioUrl || null;
   const image360Url = currentImage360Url || null;
   const payload = buildPortalPayload(
     formData,
@@ -234,7 +226,9 @@ export async function updatePortal(id: string, formData: FormData) {
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
   const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
-  const currentAudioUrl = parseOptionalString(formData.get("audioUrl"));
+  const currentAudioUrl =
+    parseOptionalString(formData.get("audio_url")) ||
+    parseOptionalString(formData.get("audioUrl"));
   const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
 
   validatePublishedPortal(
@@ -250,13 +244,7 @@ export async function updatePortal(id: string, formData: FormData) {
     supabase,
     "images"
   );
-  const uploadedAudioUrl = await maybeUploadFile(
-    formData.get("audioFile"),
-    slug,
-    supabase,
-    "audio"
-  );
-  const audioUrl = uploadedAudioUrl ?? (currentAudioUrl || null);
+  const audioUrl = currentAudioUrl || null;
   const image360Url = currentImage360Url || null;
   const payload = buildPortalPayload(
     formData,

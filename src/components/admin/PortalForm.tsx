@@ -25,16 +25,24 @@ type FieldProps = {
   label: string;
   name: string;
   defaultValue?: string | number;
+  value?: string;
   rows?: number;
   type?: string;
   error?: string;
   inputRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
-  onChange?: () => void;
+  onChange?: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 };
 
 type ValidationErrors = Partial<
   Record<
-    "global" | "slug" | "titulo" | "mapId" | "marker" | "narrative" | "image360",
+    | "global"
+    | "slug"
+    | "titulo"
+    | "mapId"
+    | "marker"
+    | "narrative"
+    | "image360"
+    | "audio",
     string
   >
 >;
@@ -43,6 +51,7 @@ function Field({
   label,
   name,
   defaultValue,
+  value,
   rows,
   type = "text",
   error,
@@ -63,6 +72,7 @@ function Field({
           name={name}
           rows={rows}
           defaultValue={defaultValue}
+          value={value}
           onChange={onChange}
           className={`${baseClassName} resize-y`}
         />
@@ -72,6 +82,7 @@ function Field({
           type={type}
           name={name}
           defaultValue={defaultValue}
+          value={value}
           onChange={onChange}
           className={baseClassName}
         />
@@ -139,15 +150,22 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const image360InputRef = useRef<HTMLInputElement>(null);
   const image360UrlRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const audioUrlRef = useRef<HTMLInputElement>(null);
   const submitBypassRef = useRef(false);
   const slugRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [statusValue, setStatusValue] = useState(portal?.status ?? "draft");
   const [image360Url, setImage360Url] = useState(portal?.imageUrl360 ?? "");
-  const [uploadState, setUploadState] = useState<
+  const [audioUrl, setAudioUrl] = useState(portal?.audioUrl ?? "");
+  const [image360UploadState, setImage360UploadState] = useState<
     "idle" | "uploading" | "success" | "error"
   >("idle");
-  const [uploadMessage, setUploadMessage] = useState("");
+  const [image360UploadMessage, setImage360UploadMessage] = useState("");
+  const [audioUploadState, setAudioUploadState] = useState<
+    "idle" | "uploading" | "success" | "error"
+  >("idle");
+  const [audioUploadMessage, setAudioUploadMessage] = useState("");
 
   const isPublishedMode = useMemo(
     () => statusValue.trim().toLowerCase() === "published",
@@ -186,14 +204,14 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
     const slug = slugRef.current?.value.trim() ?? "";
 
     if (!slug) {
-      setUploadState("error");
-      setUploadMessage("Define slug antes de subir imagen 360.");
+      setImage360UploadState("error");
+      setImage360UploadMessage("Define slug antes de subir imagen 360.");
       event.target.value = "";
       return;
     }
 
-    setUploadState("uploading");
-    setUploadMessage("Subiendo 360...");
+    setImage360UploadState("uploading");
+    setImage360UploadMessage("Subiendo 360...");
 
     try {
       const supabase = createClient();
@@ -229,16 +247,81 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         image360UrlRef.current.value = publicUrl;
       }
       event.target.value = "";
-      setUploadState("success");
-      setUploadMessage("Imagen 360 subida.");
+      setImage360UploadState("success");
+      setImage360UploadMessage("Imagen 360 subida.");
       syncValidation();
     } catch (error) {
-      setUploadState("error");
-      setUploadMessage(
+      setImage360UploadState("error");
+      setImage360UploadMessage(
         error instanceof Error
           ? error.message
           : "No se pudo subir la imagen 360."
       );
+      event.target.value = "";
+    }
+  }
+
+  async function handleAudioUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const slug = slugRef.current?.value.trim() ?? "";
+
+    if (!slug) {
+      setAudioUploadState("error");
+      setAudioUploadMessage("Define slug antes de subir audio.");
+      event.target.value = "";
+      return;
+    }
+
+    setAudioUploadState("uploading");
+    setAudioUploadMessage("Subiendo audio...");
+
+    try {
+      const supabase = createClient();
+      const timestamp = Date.now();
+      const path = `portales/audio/${slug}-${timestamp}.mp3`;
+      const contentType = file.type || "audio/mpeg";
+      const uploadFile = new File([file], `${slug}-${timestamp}.mp3`, {
+        type: contentType,
+      });
+
+      const { error } = await supabase.storage
+        .from(supabaseStorageBucket)
+        .upload(path, uploadFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(supabaseStorageBucket).getPublicUrl(path);
+
+      setAudioUrl(publicUrl);
+      if (audioUrlRef.current) {
+        audioUrlRef.current.value = publicUrl;
+      }
+      event.target.value = "";
+      setAudioUploadState("success");
+      setAudioUploadMessage("Audio subido.");
+      setErrors((current) => ({ ...current, audio: undefined }));
+    } catch (error) {
+      setAudioUploadState("error");
+      setAudioUploadMessage(
+        error instanceof Error ? error.message : "No se pudo subir el audio."
+      );
+      setErrors((current) => ({
+        ...current,
+        audio: "No se pudo subir el audio.",
+      }));
       event.target.value = "";
     }
   }
@@ -251,11 +334,14 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
 
     const nextErrors = syncValidation();
 
-    if (uploadState === "uploading") {
+    if (
+      image360UploadState === "uploading" ||
+      audioUploadState === "uploading"
+    ) {
       event.preventDefault();
       setErrors({
         ...nextErrors,
-        global: "Espera a que termine la carga de la imagen 360.",
+        global: "Espera a que terminen las cargas pendientes.",
       });
       return;
     }
@@ -265,19 +351,28 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       return;
     }
 
-    if (image360InputRef.current?.files?.length) {
+    if (image360InputRef.current?.files?.length || audioInputRef.current?.files?.length) {
       event.preventDefault();
-      await handle360Upload({
-        target: image360InputRef.current,
-      } as ChangeEvent<HTMLInputElement>);
+      if (image360InputRef.current?.files?.length) {
+        await handle360Upload({
+          target: image360InputRef.current,
+        } as ChangeEvent<HTMLInputElement>);
+      }
+      if (audioInputRef.current?.files?.length) {
+        await handleAudioUpload({
+          target: audioInputRef.current,
+        } as ChangeEvent<HTMLInputElement>);
+      }
 
-      const uploadedOk =
-        image360UrlRef.current?.value.trim() || !image360InputRef.current.value;
+      const image360UploadedOk =
+        image360UrlRef.current?.value.trim() || !image360InputRef.current?.value;
+      const audioUploadedOk =
+        audioUrlRef.current?.value.trim() || !audioInputRef.current?.value;
 
-      if (!uploadedOk) {
+      if (!image360UploadedOk || !audioUploadedOk) {
         setErrors((current) => ({
           ...current,
-          global: "No se pudo subir la imagen 360.",
+          global: "No se pudieron completar las cargas pendientes.",
         }));
         return;
       }
@@ -294,7 +389,8 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
   }
 
   const disableSubmit =
-    uploadState === "uploading" ||
+    image360UploadState === "uploading" ||
+    audioUploadState === "uploading" ||
     (isPublishedMode && Object.keys(errors).length > 0);
 
   return (
@@ -310,6 +406,13 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         type="hidden"
         name="image_360_url"
         value={image360Url}
+        readOnly
+      />
+      <input
+        ref={audioUrlRef}
+        type="hidden"
+        name="audio_url"
+        value={audioUrl}
         readOnly
       />
 
@@ -360,8 +463,10 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         />
         <Field
           label="audio_url"
-          name="audioUrl"
-          defaultValue={portal?.audioUrl ?? ""}
+          name="audio_url_display"
+          value={audioUrl}
+          onChange={(event) => setAudioUrl(event.currentTarget.value)}
+          error={errors.audio}
         />
       </div>
 
@@ -384,13 +489,12 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
         <input
           ref={image360InputRef}
           type="file"
-          name="image_360_file"
           accept="image/*"
           onChange={handle360Upload}
           className="min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors file:mr-4 file:border-0 file:bg-transparent file:text-sm file:text-foreground"
         />
-        {uploadMessage ? (
-          <p className="text-sm text-technical">{uploadMessage}</p>
+        {image360UploadMessage ? (
+          <p className="text-sm text-technical">{image360UploadMessage}</p>
         ) : null}
         {errors.image360 ? (
           <p className="text-sm text-technical">{errors.image360}</p>
@@ -402,11 +506,16 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
           audio_file
         </span>
         <input
+          ref={audioInputRef}
           type="file"
-          name="audioFile"
           accept="audio/mpeg,audio/ogg,.mp3,.ogg"
+          onChange={handleAudioUpload}
           className="min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors file:mr-4 file:border-0 file:bg-transparent file:text-sm file:text-foreground"
         />
+        {audioUploadMessage ? (
+          <p className="text-sm text-technical">{audioUploadMessage}</p>
+        ) : null}
+        {errors.audio ? <p className="text-sm text-technical">{errors.audio}</p> : null}
       </label>
 
       <Field
