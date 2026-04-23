@@ -51,7 +51,7 @@ export function PortalForm({ mode, portal, action }: PortalFormProps) {
       <div className="grid gap-6 md:grid-cols-2">
         <Field label="slug" name="slug" defaultValue={portal?.slug} />
         <Field label="mapa_id" name="mapId" defaultValue={portal?.mapId ?? "mapa-771"} />
-        <Field label="título" name="title" defaultValue={portal?.title} />
+        <Field label="título" name="titulo" defaultValue={portal?.title} />
         <Field label="estado" name="status" defaultValue={portal?.status ?? "draft"} />
         <Field label="marker_x" name="markerX" defaultValue={portal?.markerX} />
         <Field label="marker_y" name="markerY" defaultValue={portal?.markerY} />

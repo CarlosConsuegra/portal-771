@@ -93,7 +93,7 @@ function buildPortalPayload(
 ) {
   return {
     slug: parseRequiredString(formData.get("slug"), "slug"),
-    titulo: parseRequiredString(formData.get("title"), "título"),
+    titulo: parseRequiredString(formData.get("titulo"), "título"),
     narrativa: parseRequiredString(formData.get("narrative"), "narrativa"),
     mapa_id: parseRequiredString(formData.get("mapId"), "mapa_id"),
     marker_x: parseRequiredString(formData.get("markerX"), "marker_x"),
@@ -135,6 +135,7 @@ export async function logout() {
 }
 
 export async function createPortal(formData: FormData) {
+  console.log([...formData.entries()]);
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
   const uploadedImageUrl = await maybeUploadFile(
@@ -188,6 +189,7 @@ export async function createPortal(formData: FormData) {
 }
 
 export async function updatePortal(id: string, formData: FormData) {
+  console.log([...formData.entries()]);
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
   const uploadedImageUrl = await maybeUploadFile(
