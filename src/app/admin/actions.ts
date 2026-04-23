@@ -87,13 +87,14 @@ async function maybeUpload360Image(
 
 function buildPortalPayload(
   formData: FormData,
+  titulo: string,
   imageUrl: string,
   image360Url: string | null,
   audioUrl: string | null
 ) {
   return {
     slug: parseRequiredString(formData.get("slug"), "slug"),
-    titulo: parseRequiredString(formData.get("titulo"), "título"),
+    titulo,
     narrativa: parseRequiredString(formData.get("narrative"), "narrativa"),
     mapa_id: parseRequiredString(formData.get("mapId"), "mapa_id"),
     marker_x: parseRequiredString(formData.get("markerX"), "marker_x"),
@@ -136,6 +137,14 @@ export async function logout() {
 
 export async function createPortal(formData: FormData) {
   console.log([...formData.entries()]);
+  console.log("FORM DATA", Object.fromEntries(formData.entries()));
+  const tituloRaw = formData.get("titulo");
+  const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
+
+  if (!titulo || titulo.length === 0) {
+    throw new Error("Falta titulo");
+  }
+
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
   const uploadedImageUrl = await maybeUploadFile(
@@ -168,6 +177,7 @@ export async function createPortal(formData: FormData) {
   const image360Url = uploadedImage360Url ?? currentImage360Url;
   const payload = buildPortalPayload(
     formData,
+    titulo,
     uploadedImageUrl ?? currentImageUrl,
     image360Url,
     audioUrl
@@ -190,6 +200,14 @@ export async function createPortal(formData: FormData) {
 
 export async function updatePortal(id: string, formData: FormData) {
   console.log([...formData.entries()]);
+  console.log("FORM DATA", Object.fromEntries(formData.entries()));
+  const tituloRaw = formData.get("titulo");
+  const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
+
+  if (!titulo || titulo.length === 0) {
+    throw new Error("Falta titulo");
+  }
+
   const supabase = await requireAdminSession();
   const slug = parseRequiredString(formData.get("slug"), "slug");
   const uploadedImageUrl = await maybeUploadFile(
@@ -225,6 +243,7 @@ export async function updatePortal(id: string, formData: FormData) {
   const image360Url = uploadedImage360Url ?? (currentImage360Url || null);
   const payload = buildPortalPayload(
     formData,
+    titulo,
     uploadedImageUrl ?? currentImageUrl,
     image360Url,
     audioUrl
