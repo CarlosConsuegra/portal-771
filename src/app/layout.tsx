@@ -11,6 +11,11 @@ const ibmPlexSans = IBM_Plex_Sans({
 export const metadata: Metadata = {
   title: "Portal 771",
   description: "Archivo personal de observación urbana en Pachuca.",
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
   metadataBase: new URL("https://portal-771.vercel.app"),
   openGraph: {
     title: "Portal 771",
