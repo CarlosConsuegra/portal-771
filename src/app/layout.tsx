@@ -10,7 +10,7 @@ const ibmPlexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: "Portal 771",
-  description: "Archivo personal de observación urbana en Pachuca.",
+  description: "Entre lo cotidiano y lo eterno.",
   icons: {
     icon: "/icon.png",
     shortcut: "/icon.png",
@@ -19,15 +19,14 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://portal771.com"),
   openGraph: {
     title: "Portal 771",
-    description: "Archivo personal de observación urbana en Pachuca.",
+    description: "Entre lo cotidiano y lo eterno.",
     url: "https://portal771.com",
     siteName: "Portal 771",
     images: [
       {
-        url: "/og/portal-771-og.jpg",
+        url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Portal 771 – Archivo de observación urbana en Pachuca",
       },
     ],
     locale: "es_MX",
@@ -36,8 +35,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Portal 771",
-    description: "Archivo personal de observación urbana en Pachuca.",
-    images: ["/og/portal-771-og.jpg"],
+    description: "Entre lo cotidiano y lo eterno.",
+    images: ["/og.png"],
   },
 };
 
