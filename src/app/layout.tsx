@@ -16,11 +16,11 @@ export const metadata: Metadata = {
     shortcut: "/icon.png",
     apple: "/icon.png",
   },
-  metadataBase: new URL("https://portal-771.vercel.app"),
+  metadataBase: new URL("https://portal771.com"),
   openGraph: {
     title: "Portal 771",
     description: "Archivo personal de observación urbana en Pachuca.",
-    url: "https://portal-771.vercel.app",
+    url: "https://portal771.com",
     siteName: "Portal 771",
     images: [
       {
