@@ -613,6 +613,16 @@ export function Portal360VideoViewer({
     }
 
     if (video.paused) {
+      if (isMobileNormalMode) {
+        try {
+          await video.play();
+          setLoadError(null);
+        } catch {
+          setLoadError("No se pudo iniciar la reproduccion.");
+        }
+        return;
+      }
+
       if (isMobileLike) {
         setIsExperienceMode(true);
         return;
