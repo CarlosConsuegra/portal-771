@@ -196,7 +196,10 @@ export function Portal360VideoViewer({
     }
 
     const scene = new THREE.Scene();
-    const initialSize = getViewportSize(container, isMobileLikeRef.current);
+    const initialSize = getViewportSize(
+      container,
+      isImmersiveMobileRef.current || isFullscreenActiveRef.current
+    );
     const initialProjection = getCameraProjection(
       isImmersiveMobileRef.current || isFullscreenActiveRef.current
     );
@@ -266,7 +269,10 @@ export function Portal360VideoViewer({
     };
 
     const handleResize = () => {
-      const nextSize = getViewportSize(container, isMobileLikeRef.current);
+      const nextSize = getViewportSize(
+        container,
+        isImmersiveMobileRef.current || isFullscreenActiveRef.current
+      );
       const nextProjection = getCameraProjection(
         isImmersiveMobileRef.current || isFullscreenActiveRef.current
       );
@@ -500,11 +506,9 @@ export function Portal360VideoViewer({
       setLoadError(null);
 
       if (options?.immersive && isMobileLike) {
-        if (!isFullscreenActive) {
-          await toggleFullscreen();
-        }
+        const isPortraitViewport = viewportSize.height > viewportSize.width;
 
-        if (!isPortraitMobileRef.current && motionSupported && !motionActive) {
+        if (!isPortraitViewport && motionSupported && !motionActive) {
           await requestMotionPermission();
         }
       }
