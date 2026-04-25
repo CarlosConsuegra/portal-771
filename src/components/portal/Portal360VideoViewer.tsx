@@ -25,8 +25,8 @@ function getCameraFov(width: number, height: number) {
   return aspect < 1 ? 75 : 90;
 }
 
-function getViewportSize(container: HTMLDivElement, immersiveMobile: boolean) {
-  if (immersiveMobile && typeof window !== "undefined") {
+function getViewportSize(container: HTMLDivElement, useVisualViewport: boolean) {
+  if (useVisualViewport && typeof window !== "undefined") {
     const width = window.visualViewport?.width ?? window.innerWidth;
     const height = window.visualViewport?.height ?? window.innerHeight;
 
@@ -55,6 +55,7 @@ export function Portal360VideoViewer({
   const animationFrameRef = useRef<number | null>(null);
   const motionQuaternionRef = useRef(new THREE.Quaternion());
   const motionActiveRef = useRef(false);
+  const isMobileLikeRef = useRef(false);
   const isImmersiveMobileRef = useRef(false);
   const isPortraitMobileRef = useRef(false);
   const lonRef = useRef(0);
@@ -105,6 +106,10 @@ export function Portal360VideoViewer({
     isImmersiveMobile && viewportSize.height > viewportSize.width;
 
   useEffect(() => {
+    isMobileLikeRef.current = isMobileLike;
+  }, [isMobileLike]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -118,10 +123,12 @@ export function Portal360VideoViewer({
 
     updateViewportSize();
     window.addEventListener("resize", updateViewportSize);
+    window.addEventListener("orientationchange", updateViewportSize);
     window.visualViewport?.addEventListener("resize", updateViewportSize);
 
     return () => {
       window.removeEventListener("resize", updateViewportSize);
+      window.removeEventListener("orientationchange", updateViewportSize);
       window.visualViewport?.removeEventListener("resize", updateViewportSize);
     };
   }, []);
@@ -157,11 +164,7 @@ export function Portal360VideoViewer({
       isFullscreenActive || isImmersiveMobile ? "hidden" : "";
 
     const timeout = window.setTimeout(() => {
-      rendererRef.current?.setSize(
-        containerRef.current?.clientWidth ?? 0,
-        containerRef.current?.clientHeight ?? 0,
-        false
-      );
+      resizeRendererRef.current?.();
     }, 50);
 
     return () => {
@@ -179,7 +182,7 @@ export function Portal360VideoViewer({
     }
 
     const scene = new THREE.Scene();
-    const initialSize = getViewportSize(container, isImmersiveMobileRef.current);
+    const initialSize = getViewportSize(container, isMobileLikeRef.current);
     const camera = new THREE.PerspectiveCamera(
       getCameraFov(initialSize.width, initialSize.height),
       initialSize.width / initialSize.height,
@@ -189,11 +192,13 @@ export function Portal360VideoViewer({
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const rendererElement = renderer.domElement;
     rendererElementRef.current = rendererElement;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     if ("outputColorSpace" in renderer) {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     }
     renderer.setSize(initialSize.width, initialSize.height, false);
+    camera.aspect = initialSize.width / initialSize.height;
+    camera.updateProjectionMatrix();
     rendererRef.current = renderer;
     container.appendChild(rendererElement);
     rendererElement.style.display = isPortraitMobileRef.current ? "none" : "block";
@@ -243,9 +248,8 @@ export function Portal360VideoViewer({
     };
 
     const handleResize = () => {
-      const nextSize = getViewportSize(container, isImmersiveMobileRef.current);
+      const nextSize = getViewportSize(container, isMobileLikeRef.current);
       camera.aspect = nextSize.width / nextSize.height;
-      camera.fov = getCameraFov(nextSize.width, nextSize.height);
       camera.updateProjectionMatrix();
       renderer.setSize(nextSize.width, nextSize.height, false);
     };
@@ -325,6 +329,8 @@ export function Portal360VideoViewer({
     };
 
     window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    window.visualViewport?.addEventListener("resize", handleResize);
     window.addEventListener("deviceorientation", handleDeviceOrientation);
     rendererElement.addEventListener("pointerdown", handlePointerDown);
     rendererElement.addEventListener("pointermove", handlePointerMove);
@@ -336,6 +342,8 @@ export function Portal360VideoViewer({
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+      window.visualViewport?.removeEventListener("resize", handleResize);
       window.removeEventListener("deviceorientation", handleDeviceOrientation);
       rendererElement.removeEventListener("pointerdown", handlePointerDown);
       rendererElement.removeEventListener("pointermove", handlePointerMove);
