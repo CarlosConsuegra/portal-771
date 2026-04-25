@@ -236,12 +236,13 @@ export function Portal360VideoViewer({
       rendererElementRef.current.style.display =
         isPortraitMobile ||
         (isMobileExperience &&
+          !vrMode &&
           mobileStage !== "normal" &&
           mobileStage !== "vr")
           ? "none"
           : "block";
     }
-  }, [isMobileExperience, mobileStage, isPortraitMobile, viewportSize]);
+  }, [isMobileExperience, mobileStage, isPortraitMobile, viewportSize, vrMode]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -311,6 +312,7 @@ export function Portal360VideoViewer({
     rendererElement.style.display =
       isPortraitMobileRef.current ||
       (isExperienceModeRef.current &&
+        !vrModeRef.current &&
         mobileStageRef.current !== "normal" &&
         mobileStageRef.current !== "vr")
         ? "none"
@@ -354,6 +356,7 @@ export function Portal360VideoViewer({
       if (
         isPortraitMobileRef.current ||
         (isExperienceModeRef.current &&
+          !vrModeRef.current &&
           mobileStageRef.current !== "normal" &&
           mobileStageRef.current !== "vr")
       ) {
@@ -381,22 +384,25 @@ export function Portal360VideoViewer({
         renderer.setScissor(0, 0, halfWidth, viewportHeight);
         renderer.render(scene, camera);
 
-        renderer.setViewport(
-          halfWidth,
-          0,
-          viewportWidth - halfWidth,
-          viewportHeight
-        );
-        renderer.setScissor(
-          halfWidth,
-          0,
-          viewportWidth - halfWidth,
-          viewportHeight
-        );
+        renderer.setViewport(halfWidth, 0, halfWidth, viewportHeight);
+        renderer.setScissor(halfWidth, 0, halfWidth, viewportHeight);
         renderer.render(scene, camera);
         renderer.setScissorTest(false);
         renderer.autoClear = true;
       } else {
+        renderer.setScissorTest(false);
+        renderer.setViewport(
+          0,
+          0,
+          renderer.domElement.width,
+          renderer.domElement.height
+        );
+        renderer.setScissor(
+          0,
+          0,
+          renderer.domElement.width,
+          renderer.domElement.height
+        );
         renderer.render(scene, camera);
       }
 
