@@ -174,8 +174,10 @@ export function Portal360VideoViewer({
   }, []);
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+
     document.body.style.overflow =
-      isFullscreenActive || isImmersiveMobile ? "hidden" : "";
+      isFullscreenActive || isImmersiveMobile ? "hidden" : previousOverflow;
 
     const timeout = window.setTimeout(() => {
       resizeRendererRef.current?.();
@@ -183,7 +185,7 @@ export function Portal360VideoViewer({
 
     return () => {
       window.clearTimeout(timeout);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [isFullscreenActive, isImmersiveMobile]);
 
@@ -633,14 +635,14 @@ export function Portal360VideoViewer({
           ref={shellRef}
           className={`relative mx-auto w-full bg-background ${
             isImmersiveMobile || isFullscreenActive
-              ? "fixed inset-0 z-50 max-w-none bg-black p-0"
+              ? "fixed inset-0 z-[9999] max-w-none overflow-hidden bg-black p-0"
               : "max-w-[1680px]"
           }`}
           style={
             isImmersiveMobile
               ? {
-                  width: `${viewportSize.width}px`,
-                  height: `${viewportSize.height}px`,
+                  width: "100vw",
+                  height: "100dvh",
                 }
               : undefined
           }
