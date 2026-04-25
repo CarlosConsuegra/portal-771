@@ -587,6 +587,9 @@ export function Portal360VideoViewer({
     if (options?.immersive && isMobileLike) {
       const isPortraitViewport = viewportSize.height > viewportSize.width;
 
+      video.muted = false;
+      setIsMuted(false);
+
       if (!isPortraitViewport && motionSupported && !motionActive) {
         await requestMotionPermission();
       }
@@ -904,7 +907,7 @@ export function Portal360VideoViewer({
                     onClick={toggleNarrativeAudio}
                     className={MOBILE_TEXT_BUTTON_CLASS}
                   >
-                    {isNarrativePlaying ? "PAUSAR NARRATIVA" : "NARRATIVA"}
+                    {isNarrativePlaying ? "PAUSAR" : "NARRATIVA"}
                   </button>
                 ) : null}
               </div>
@@ -925,7 +928,7 @@ export function Portal360VideoViewer({
                 {loadError ?? motionError}
               </p>
             ) : isMobileNormalMode ? (
-              <p className="absolute right-2 bottom-2 line-clamp-2 max-w-[16rem] rounded-[1rem] border border-white/35 bg-black/55 px-3 py-2 text-[0.68rem] leading-relaxed text-white">
+              <p className="absolute bottom-3 left-1/2 line-clamp-3 w-[72vw] max-w-[72vw] -translate-x-1/2 border border-white/35 bg-black/55 px-3 py-2 text-center text-[0.68rem] leading-relaxed text-white">
                 {narrativeText}
               </p>
             ) : null}
