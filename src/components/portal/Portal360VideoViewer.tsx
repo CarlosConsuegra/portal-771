@@ -41,9 +41,21 @@ export function Portal360VideoViewer({
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [motionError, setMotionError] = useState<string | null>(null);
+  const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [motionSupported] = useState(
     () => typeof window !== "undefined" && "DeviceOrientationEvent" in window
   );
+  const [isMobileLike] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return (
+      window.matchMedia("(max-width: 768px)").matches ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      navigator.maxTouchPoints > 0
+    );
+  });
   const [motionActive, setMotionActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
@@ -280,6 +292,7 @@ export function Portal360VideoViewer({
     setMotionError(null);
     setIsPlaying(false);
     setIsMuted(true);
+    setHasStartedPlayback(false);
     setMotionActive(false);
     video.src = videoUrl;
     video.load();
@@ -309,7 +322,6 @@ export function Portal360VideoViewer({
     video.addEventListener("pause", handlePause);
     video.addEventListener("volumechange", handleVolumeChange);
     video.addEventListener("error", handleError);
-    void video.play().catch(() => {});
 
     return () => {
       video.pause();
@@ -325,6 +337,62 @@ export function Portal360VideoViewer({
     };
   }, [videoUrl]);
 
+  async function requestMotionPermission() {
+    if (!motionSupported) {
+      return false;
+    }
+
+    const deviceOrientation = DeviceOrientationEvent as
+      | DeviceOrientationEventWithPermission
+      | undefined;
+
+    if (typeof deviceOrientation?.requestPermission === "function") {
+      try {
+        const permission = await deviceOrientation.requestPermission();
+
+        if (permission !== "granted") {
+          setMotionActive(false);
+          setMotionError("Permiso de movimiento denegado.");
+          return false;
+        }
+      } catch {
+        setMotionActive(false);
+        setMotionError("No se pudo activar el movimiento.");
+        return false;
+      }
+    }
+
+    setMotionError(null);
+    setMotionActive(true);
+    return true;
+  }
+
+  async function startPlayback(options?: { immersive?: boolean }) {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    try {
+      await video.play();
+      setHasStartedPlayback(true);
+      setLoadError(null);
+
+      if (options?.immersive && isMobileLike) {
+        if (!isFullscreenActive) {
+          await toggleFullscreen();
+        }
+
+        if (motionSupported && !motionActive) {
+          await requestMotionPermission();
+        }
+      }
+    } catch {
+      setLoadError("No se pudo iniciar la reproduccion.");
+    }
+  }
+
   async function togglePlayback() {
     const video = videoRef.current;
 
@@ -333,11 +401,7 @@ export function Portal360VideoViewer({
     }
 
     if (video.paused) {
-      try {
-        await video.play();
-      } catch {
-        setLoadError("No se pudo iniciar la reproduccion.");
-      }
+      await startPlayback({ immersive: true });
       return;
     }
 
@@ -356,7 +420,7 @@ export function Portal360VideoViewer({
   }
 
   async function toggleMotion() {
-    if (!motionSupported) {
+    if (!isMobileLike || !motionSupported) {
       setMotionError("El movimiento no esta disponible en este dispositivo.");
       return;
     }
@@ -367,28 +431,7 @@ export function Portal360VideoViewer({
       return;
     }
 
-    const deviceOrientation = DeviceOrientationEvent as
-      | DeviceOrientationEventWithPermission
-      | undefined;
-
-    if (typeof deviceOrientation?.requestPermission === "function") {
-      try {
-        const permission = await deviceOrientation.requestPermission();
-
-        if (permission !== "granted") {
-          setMotionActive(false);
-          setMotionError("Permiso de movimiento denegado.");
-          return;
-        }
-      } catch {
-        setMotionActive(false);
-        setMotionError("No se pudo activar el movimiento.");
-        return;
-      }
-    }
-
-    setMotionError(null);
-    setMotionActive(true);
+    await requestMotionPermission();
   }
 
   async function toggleFullscreen() {
@@ -461,6 +504,18 @@ export function Portal360VideoViewer({
             {!isReady && !loadError ? (
               <div className="absolute inset-0 bg-[#ece8e0]" />
             ) : null}
+
+            {!hasStartedPlayback && !loadError ? (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/28 backdrop-blur-[2px]">
+                <button
+                  type="button"
+                  onClick={() => void startPlayback({ immersive: true })}
+                  className="border border-line bg-background/94 px-5 py-3 text-[0.7rem] uppercase tracking-[0.22em] text-foreground transition-opacity hover:opacity-70"
+                >
+                  play
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <video
@@ -473,44 +528,54 @@ export function Portal360VideoViewer({
             className="hidden"
           />
 
-          <div className="absolute top-3 left-3 flex gap-2">
-            <button
-              type="button"
-              onClick={toggleMotion}
-              className="border border-line bg-background/92 px-3 py-2 text-[0.72rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
-            >
-              {motionActive ? "desactivar movimiento" : "activar movimiento"}
-            </button>
+          <div className="absolute top-2 left-2 flex gap-1.5">
+            {isMobileLike && motionSupported && hasStartedPlayback && !motionActive ? (
+              <button
+                type="button"
+                onClick={toggleMotion}
+                className="border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+              >
+                activar movimiento
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={togglePlayback}
-              className="border border-line bg-background/92 px-3 py-2 text-[0.72rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+              className="border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
             >
               {isPlaying ? "pausar" : "play"}
             </button>
             <button
               type="button"
               onClick={toggleMuted}
-              className="border border-line bg-background/92 px-3 py-2 text-[0.72rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+              className="border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
             >
               {isMuted ? "activar audio" : "silenciar"}
+            </button>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="border border-line bg-background/70 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-muted"
+            >
+              vr
             </button>
           </div>
 
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="absolute top-3 right-3 border border-line bg-background/92 px-3 py-2 text-[0.72rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+            className="absolute top-2 right-2 border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
           >
             {isFullscreenActive ? "cerrar" : "fullscreen"}
           </button>
 
           {loadError || motionError ? (
-            <p className="absolute right-3 bottom-3 max-w-[18rem] border border-line bg-background/92 px-3 py-2 text-[0.72rem] leading-relaxed text-muted">
+            <p className="absolute right-2 bottom-2 max-w-[16rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
               {loadError ?? motionError}
             </p>
           ) : (
-            <p className="absolute right-3 bottom-3 max-w-[18rem] border border-line bg-background/92 px-3 py-2 text-[0.72rem] leading-relaxed text-muted">
+            <p className="absolute right-2 bottom-2 max-w-[16rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
               arrastra para explorar 360
             </p>
           )}
