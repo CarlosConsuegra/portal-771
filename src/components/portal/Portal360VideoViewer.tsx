@@ -18,10 +18,35 @@ const CONTROL_BUTTON_CLASS =
   "flex h-9 w-9 items-center justify-center rounded-full border border-line bg-background/86 text-[1rem] leading-none text-foreground transition-opacity hover:opacity-70";
 const CONTROL_BUTTON_DISABLED_CLASS =
   "flex h-9 w-9 items-center justify-center rounded-full border border-line bg-background/70 text-[1rem] leading-none text-muted";
+const MOBILE_TEXT_BUTTON_CLASS =
+  "border border-white/70 bg-black/28 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-70";
+const MOBILE_TEXT_BUTTON_DISABLED_CLASS =
+  "border border-white/25 bg-black/18 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white/45";
 
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
 };
+
+function getNarrativeText(fallback: string) {
+  if (typeof document === "undefined") {
+    return fallback;
+  }
+
+  const paragraphs = Array.from(document.querySelectorAll("main p"))
+    .map((element) => element.textContent?.trim() ?? "")
+    .filter(Boolean);
+
+  return paragraphs.sort((left, right) => right.length - left.length)[0] ?? fallback;
+}
+
+function getNarrativeAudioElement() {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const audio = document.querySelector("main audio");
+  return audio instanceof HTMLAudioElement ? audio : null;
+}
 
 function getViewportSize(container: HTMLDivElement, useVisualViewport: boolean) {
   if (useVisualViewport && typeof window !== "undefined") {
@@ -65,6 +90,7 @@ export function Portal360VideoViewer({
   const rendererElementRef = useRef<HTMLCanvasElement | null>(null);
   const resizeRendererRef = useRef<(() => void) | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const narrativeAudioRef = useRef<HTMLAudioElement | null>(null);
   const motionQuaternionRef = useRef(new THREE.Quaternion());
   const motionActiveRef = useRef(false);
   const isMobileLikeRef = useRef(false);
@@ -87,6 +113,7 @@ export function Portal360VideoViewer({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [motionError, setMotionError] = useState<string | null>(null);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
+  const [isNarrativePlaying, setIsNarrativePlaying] = useState(false);
   const [motionSupported] = useState(
     () => typeof window !== "undefined" && "DeviceOrientationEvent" in window
   );
@@ -124,6 +151,34 @@ export function Portal360VideoViewer({
     isMobileExperience && viewportSize.height > viewportSize.width;
   const isMobileNormalMode = isMobileExperience && mobileStage === "normal";
   const containerMode = isMobileExperience ? "mobile" : "embed";
+  const narrativeText = getNarrativeText(title);
+  const narrativeAudioElement = getNarrativeAudioElement();
+  const hasNarrativeAudio = Boolean(narrativeAudioElement?.getAttribute("src"));
+
+  useEffect(() => {
+    if (!narrativeAudioElement) {
+      narrativeAudioRef.current = null;
+      queueMicrotask(() => setIsNarrativePlaying(false));
+      return;
+    }
+
+    narrativeAudioRef.current = narrativeAudioElement;
+
+    const syncNarrativeState = () => {
+      setIsNarrativePlaying(!narrativeAudioElement.paused);
+    };
+
+    narrativeAudioElement.addEventListener("play", syncNarrativeState);
+    narrativeAudioElement.addEventListener("pause", syncNarrativeState);
+    narrativeAudioElement.addEventListener("ended", syncNarrativeState);
+    queueMicrotask(syncNarrativeState);
+
+    return () => {
+      narrativeAudioElement.removeEventListener("play", syncNarrativeState);
+      narrativeAudioElement.removeEventListener("pause", syncNarrativeState);
+      narrativeAudioElement.removeEventListener("ended", syncNarrativeState);
+    };
+  }, [narrativeAudioElement]);
 
   useEffect(() => {
     isMobileLikeRef.current = isMobileLike;
@@ -581,6 +636,50 @@ export function Portal360VideoViewer({
     setIsMuted(video.muted);
   }
 
+  async function handleBackToMap() {
+    const video = videoRef.current;
+    const narrativeAudio = narrativeAudioRef.current;
+
+    if (video) {
+      video.pause();
+    }
+
+    if (narrativeAudio) {
+      narrativeAudio.pause();
+    }
+
+    setMotionActive(false);
+    setMotionError(null);
+    setHasStartedPlayback(false);
+    setMobileStage("prestart");
+    setIsExperienceMode(false);
+    document.body.style.overflow = "";
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const mapId = searchParams.get("map");
+    const target = mapId ? `/?map=${encodeURIComponent(mapId)}` : "/";
+    window.location.assign(target);
+  }
+
+  async function toggleNarrativeAudio() {
+    const narrativeAudio = narrativeAudioRef.current;
+
+    if (!narrativeAudio) {
+      return;
+    }
+
+    if (narrativeAudio.paused) {
+      try {
+        await narrativeAudio.play();
+      } catch {
+        // Keep the overlay usable even if playback fails.
+      }
+      return;
+    }
+
+    narrativeAudio.pause();
+  }
+
   async function toggleFullscreen() {
     if (!shellRef.current) {
       return;
@@ -626,29 +725,6 @@ export function Portal360VideoViewer({
     }
 
     setIsFallbackFullscreen(true);
-  }
-
-  async function closeExperience() {
-    const video = videoRef.current;
-
-    if (video) {
-      video.pause();
-    }
-
-    setMotionActive(false);
-    setMotionError(null);
-    setHasStartedPlayback(false);
-    setMobileStage("prestart");
-    setIsExperienceMode(false);
-
-    if (document.fullscreenElement === shellRef.current) {
-      await document.exitFullscreen();
-      return;
-    }
-
-    if (isFallbackFullscreen) {
-      setIsFallbackFullscreen(false);
-    }
   }
 
   const embeddedViewer = (
@@ -788,42 +864,59 @@ export function Portal360VideoViewer({
             </div>
 
             {isMobileNormalMode ? (
-              <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
+              <div className="absolute top-2 left-2 flex max-w-[calc(100vw-5rem)] flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleBackToMap}
+                  className={MOBILE_TEXT_BUTTON_CLASS}
+                >
+                  VOLVER
+                </button>
                 <button
                   type="button"
                   onClick={togglePlayback}
-                  className={CONTROL_BUTTON_CLASS}
+                  className={MOBILE_TEXT_BUTTON_CLASS}
                   aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
                 >
-                  {isPlaying ? "❚❚" : "▶"}
+                  {isPlaying ? "PAUSA" : "PLAY"}
                 </button>
                 <button
                   type="button"
                   onClick={toggleMuted}
-                  className={CONTROL_BUTTON_CLASS}
+                  className={MOBILE_TEXT_BUTTON_CLASS}
                   aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
                 >
-                  {isMuted ? "🔇" : "🔊"}
+                  {isMuted ? "AUDIO" : "SILENCIAR"}
                 </button>
+                {hasNarrativeAudio ? (
+                  <button
+                    type="button"
+                    onClick={toggleNarrativeAudio}
+                    className={MOBILE_TEXT_BUTTON_CLASS}
+                  >
+                    {isNarrativePlaying ? "PAUSAR NARRATIVA" : "NARRATIVA"}
+                  </button>
+                ) : null}
               </div>
             ) : null}
 
             <button
               type="button"
-              onClick={closeExperience}
-              className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
-              aria-label="Cerrar visor"
+              disabled
+              aria-disabled="true"
+              className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_DISABLED_CLASS}`}
+              aria-label="VR pronto"
             >
-              ✕
+              VR
             </button>
 
             {loadError || motionError ? (
-              <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+              <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-white/35 bg-black/55 px-3 py-2 text-[0.68rem] leading-relaxed text-white">
                 {loadError ?? motionError}
               </p>
             ) : isMobileNormalMode ? (
-              <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
-                arrastra para explorar 360
+              <p className="absolute right-2 bottom-2 line-clamp-2 max-w-[16rem] rounded-[1rem] border border-white/35 bg-black/55 px-3 py-2 text-[0.68rem] leading-relaxed text-white">
+                {narrativeText}
               </p>
             ) : null}
           </div>,
