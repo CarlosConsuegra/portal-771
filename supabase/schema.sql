@@ -42,6 +42,8 @@ create table if not exists public.portales (
   lat numeric null,
   lng numeric null,
   image_url text not null,
+  media_type text not null default 'image_2d',
+  youtube_video_id text null,
   audio_url text null,
   status text not null,
   created_at timestamptz not null default now()
@@ -49,6 +51,17 @@ create table if not exists public.portales (
 
 alter table public.portales
 add column if not exists image_360_url text null;
+
+alter table public.portales
+add column if not exists media_type text not null default 'image_2d';
+
+alter table public.portales
+add column if not exists youtube_video_id text null;
+
+update public.portales
+set media_type = 'image_360'
+where image_360_url is not null
+  and coalesce(media_type, 'image_2d') = 'image_2d';
 
 alter table public.portales enable row level security;
 

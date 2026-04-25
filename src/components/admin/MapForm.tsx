@@ -4,7 +4,6 @@ import Image from "next/image";
 import {
   type ChangeEvent,
   type FormEvent,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -87,11 +86,10 @@ export function MapForm({ map, action }: MapFormProps) {
     "idle" | "uploading" | "success" | "error"
   >("idle");
   const [uploadMessage, setUploadMessage] = useState("");
-  const [errors, setErrors] = useState<ValidationErrors>({});
-
-  useEffect(() => {
-    setErrors(validateMap({ slug, titulo, imageUrl }));
-  }, [slug, titulo, imageUrl]);
+  const errors = useMemo(
+    () => validateMap({ slug, titulo, imageUrl }),
+    [slug, titulo, imageUrl]
+  );
 
   async function handleMapUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -159,7 +157,6 @@ export function MapForm({ map, action }: MapFormProps) {
     }
 
     const nextErrors = validateMap({ slug, titulo, imageUrl });
-    setErrors(nextErrors);
 
     if (uploadState === "uploading") {
       event.preventDefault();

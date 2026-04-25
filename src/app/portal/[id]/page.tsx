@@ -36,6 +36,8 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
           title={portal.title}
           imageUrl={portal.imageUrl}
           imageUrl360={portal.imageUrl360}
+          mediaType={portal.mediaType}
+          youtubeVideoId={portal.youtubeVideoId}
         />
         <PortalNarrative
           narrative={portal.narrative}

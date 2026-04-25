@@ -9,6 +9,7 @@ export const portals: Portal[] = [
     narrative:
       "Morning traffic had already moved on. The storefront reflected a stairwell, a parked bicycle, and a narrow band of pale sky. Nothing happened for several minutes and that became the event.",
     imageUrl: "/images/20220904_182222_preview.jpeg",
+    mediaType: "image_2d",
     mapId: "mapa-771",
     lat: 19.4323,
     lng: -99.1332,
@@ -25,6 +26,7 @@ export const portals: Portal[] = [
     narrative:
       "The facade was almost blank except for an antenna line cutting across the frame. On paper the block looked regular, but standing there made the geometry feel provisional and improvised.",
     imageUrl: "/images/portal-771-02.svg",
+    mediaType: "image_2d",
     mapId: "mapa-771",
     lat: 19.4329,
     lng: -99.1349,
@@ -41,6 +43,7 @@ export const portals: Portal[] = [
     narrative:
       "A service lane narrowed into an accidental room. The concrete wall held marks from posters that had already been removed, leaving a palimpsest more precise than any sign still in place.",
     imageUrl: "/images/portal-771-03.svg",
+    mediaType: "image_2d",
     mapId: "mapa-771",
     lat: 19.4336,
     lng: -99.1318,
@@ -57,6 +60,7 @@ export const portals: Portal[] = [
     narrative:
       "The bridge was functional and strangely ceremonial. Crossing it slowed the body just enough to notice the rooflines stitched together below.",
     imageUrl: "/images/portal-771-04.svg",
+    mediaType: "image_2d",
     mapId: "mapa-771",
     lat: 19.4342,
     lng: -99.1358,
@@ -73,6 +77,7 @@ export const portals: Portal[] = [
     narrative:
       "Concrete dust stayed on the handrail for weeks. The stair tower looked complete from the avenue, but every landing still carried tape, chalk marks, and unfinished edges.",
     imageUrl: "/images/portal-771-05.svg",
+    mediaType: "image_2d",
     mapId: "mapa-771",
     lat: 19.4318,
     lng: -99.1321,

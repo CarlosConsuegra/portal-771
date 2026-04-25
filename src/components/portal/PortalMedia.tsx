@@ -1,12 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { PortalMediaType } from "@/lib/types";
 import { PortalImage } from "./PortalImage";
 
 type PortalMediaProps = {
   title: string;
   imageUrl: string;
   imageUrl360?: string | null;
+  mediaType: PortalMediaType;
+  youtubeVideoId?: string | null;
 };
 
 const Portal360Viewer = dynamic(
@@ -25,8 +28,28 @@ export function PortalMedia({
   title,
   imageUrl,
   imageUrl360,
+  mediaType,
+  youtubeVideoId,
 }: PortalMediaProps) {
-  if (!imageUrl360) {
+  if (mediaType === "youtube_360" && youtubeVideoId) {
+    return (
+      <figure className="w-full">
+        <div className="mt-0.5 w-full md:mt-1">
+          <div className="relative mx-auto aspect-video w-full max-w-[1680px] overflow-hidden border border-line bg-[#ece8e0] md:w-[93vw]">
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeVideoId}?rel=0&modestbranding=1&playsinline=1`}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full border-0"
+            />
+          </div>
+        </div>
+      </figure>
+    );
+  }
+
+  if (mediaType !== "image_360" || !imageUrl360) {
     return <PortalImage title={title} imageUrl={imageUrl} />;
   }
 

@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 const PORTAL_COLUMNS = "*";
 
 function mapRowToPortal(row: PortalRow): Portal {
+  const mediaType =
+    row.media_type ?? (row.image_360_url ? "image_360" : "image_2d");
+
   return {
     id: row.id,
     slug: row.slug,
@@ -14,6 +17,8 @@ function mapRowToPortal(row: PortalRow): Portal {
     narrative: row.narrativa,
     imageUrl: row.image_url,
     imageUrl360: row.image_360_url ?? null,
+    mediaType,
+    youtubeVideoId: row.youtube_video_id ?? null,
     mapId: row.mapa_id,
     lat: row.lat,
     lng: row.lng,

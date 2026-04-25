@@ -15,7 +15,8 @@ import {
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { supabaseStorageBucket } from "@/lib/supabase/config";
-import { MapRecord, Portal } from "@/lib/types";
+import { extractYouTubeVideoId } from "@/lib/youtube";
+import { MapRecord, Portal, PortalMediaType } from "@/lib/types";
 
 type PortalFormProps = {
   mode: "create" | "edit";
@@ -40,7 +41,7 @@ type SelectFieldProps = {
   label: string;
   name: string;
   value: string;
-  options: string[];
+  options: Array<{ value: string; label: string }>;
   onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
 };
 
@@ -52,11 +53,17 @@ type ValidationErrors = Partial<
     | "mapId"
     | "marker"
     | "narrative"
-    | "image360"
+    | "media"
     | "audio",
     string
   >
 >;
+
+const MEDIA_TYPE_OPTIONS: Array<{ value: PortalMediaType; label: string }> = [
+  { value: "image_2d", label: "Imagen 2D" },
+  { value: "image_360", label: "Imagen 360" },
+  { value: "youtube_360", label: "YouTube 360" },
+];
 
 function Field({
   label,
@@ -123,8 +130,8 @@ function SelectField({
         className={baseClassName}
       >
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -148,8 +155,12 @@ function validatePublishedData(formData: FormData): ValidationErrors {
   const markerX = parseTrimmed(formData.get("markerX"));
   const markerY = parseTrimmed(formData.get("markerY"));
   const narrative = parseTrimmed(formData.get("narrative"));
+  const mediaType =
+    (parseTrimmed(formData.get("mediaType")) as PortalMediaType) || "image_2d";
   const imageUrl = parseTrimmed(formData.get("imageUrl"));
   const image360Url = parseTrimmed(formData.get("image_360_url"));
+  const youtubeVideoInput = parseTrimmed(formData.get("youtubeVideoInput"));
+  const youtubeVideoId = extractYouTubeVideoId(youtubeVideoInput);
   const hasImageFile = hasFile(formData.get("imageFile"));
 
   if (!slug) {
@@ -175,8 +186,16 @@ function validatePublishedData(formData: FormData): ValidationErrors {
     errors.narrative = "Falta narrativa";
   }
 
-  if (!imageUrl && !hasImageFile && !image360Url) {
-    errors.image360 = "Falta imagen";
+  if (mediaType === "image_2d" && !imageUrl && !hasImageFile) {
+    errors.media = "Falta imagen";
+  }
+
+  if (mediaType === "image_360" && !image360Url) {
+    errors.media = "Falta imagen 360";
+  }
+
+  if (mediaType === "youtube_360" && !youtubeVideoId) {
+    errors.media = "Falta video de YouTube 360 valido";
   }
 
   if (Object.keys(errors).length > 0) {
@@ -195,8 +214,14 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
   const slugRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [statusValue, setStatusValue] = useState(portal?.status ?? "draft");
+  const [mediaType, setMediaType] = useState<PortalMediaType>(
+    portal?.mediaType ?? (portal?.imageUrl360 ? "image_360" : "image_2d")
+  );
   const [mapId, setMapId] = useState(portal?.mapId ?? maps[0]?.id ?? "mapa-771");
   const [image360Url, setImage360Url] = useState(portal?.imageUrl360 ?? "");
+  const [youtubeVideoInput, setYouTubeVideoInput] = useState(
+    portal?.youtubeVideoId ?? ""
+  );
   const [audioUrl, setAudioUrl] = useState(portal?.audioUrl ?? "");
   const [markerX, setMarkerX] = useState(
     portal?.markerX !== undefined ? String(portal.markerX) : ""
@@ -405,11 +430,6 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
       return;
     }
 
-    if (isPublishedMode && Object.keys(nextErrors).length > 0) {
-      event.preventDefault();
-      return;
-    }
-
     if (image360InputRef.current?.files?.length || audioInputRef.current?.files?.length) {
       event.preventDefault();
       if (image360InputRef.current?.files?.length) {
@@ -444,6 +464,11 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
 
       submitBypassRef.current = true;
       formRef.current?.requestSubmit();
+      return;
+    }
+
+    if (isPublishedMode && Object.keys(nextErrors).length > 0) {
+      event.preventDefault();
     }
   }
 
@@ -477,7 +502,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           name="mapId"
           value={mapId}
           onChange={(event) => setMapId(event.currentTarget.value)}
-          options={maps.map((map) => map.id)}
+          options={maps.map((map) => ({ value: map.id, label: map.id }))}
         />
         <Field
           label="título"
@@ -486,11 +511,21 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           error={errors.titulo}
         />
         <SelectField
+          label="tipo de medio"
+          name="mediaType"
+          value={mediaType}
+          onChange={(event) => setMediaType(event.currentTarget.value as PortalMediaType)}
+          options={MEDIA_TYPE_OPTIONS}
+        />
+        <SelectField
           label="estado"
           name="status"
           value={statusValue}
           onChange={(event) => setStatusValue(event.currentTarget.value)}
-          options={["draft", "published"]}
+          options={[
+            { value: "draft", label: "draft" },
+            { value: "published", label: "published" },
+          ]}
         />
         <Field
           label="marker_x"
@@ -510,13 +545,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           label="image_url"
           name="imageUrl"
           defaultValue={portal?.imageUrl}
-          error={errors.image360}
-        />
-        <Field
-          label="image_360_url"
-          name="image_360_url"
-          value={image360Url}
-          onChange={(event) => setImage360Url(event.currentTarget.value)}
+          error={mediaType === "image_2d" ? errors.media : undefined}
         />
         <Field
           label="audio_url"
@@ -526,6 +555,24 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           error={errors.audio}
         />
       </div>
+
+      {mediaType === "youtube_360" ? (
+        <Field
+          label="youtube_360"
+          name="youtubeVideoInput"
+          value={youtubeVideoInput}
+          onChange={(event) => setYouTubeVideoInput(event.currentTarget.value)}
+          error={errors.media}
+        />
+      ) : (
+        <Field
+          label="image_360_url"
+          name="image_360_url"
+          value={image360Url}
+          onChange={(event) => setImage360Url(event.currentTarget.value)}
+          error={mediaType === "image_360" ? errors.media : undefined}
+        />
+      )}
 
       {selectedMap ? (
         <div className="flex flex-col gap-3">
@@ -572,24 +619,23 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
         />
       </label>
 
-      <label className="flex flex-col gap-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-muted">
-          image_360_file
-        </span>
-        <input
-          ref={image360InputRef}
-          type="file"
-          accept="image/*"
-          onChange={handle360Upload}
-          className="min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors file:mr-4 file:border-0 file:bg-transparent file:text-sm file:text-foreground"
-        />
-        {image360UploadMessage ? (
-          <p className="text-sm text-technical">{image360UploadMessage}</p>
-        ) : null}
-        {errors.image360 ? (
-          <p className="text-sm text-technical">{errors.image360}</p>
-        ) : null}
-      </label>
+      {mediaType !== "youtube_360" ? (
+        <label className="flex flex-col gap-3">
+          <span className="text-xs uppercase tracking-[0.18em] text-muted">
+            image_360_file
+          </span>
+          <input
+            ref={image360InputRef}
+            type="file"
+            accept="image/*"
+            onChange={handle360Upload}
+            className="min-h-11 w-full border border-line bg-transparent px-3 py-3 text-sm outline-none transition-colors file:mr-4 file:border-0 file:bg-transparent file:text-sm file:text-foreground"
+          />
+          {image360UploadMessage ? (
+            <p className="text-sm text-technical">{image360UploadMessage}</p>
+          ) : null}
+        </label>
+      ) : null}
 
       <label className="flex flex-col gap-3">
         <span className="text-xs uppercase tracking-[0.18em] text-muted">
@@ -631,7 +677,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           Volver al archivo
         </Link>
         <p className="quiet-label">
-          Imagen, imagen 360 y audio son opcionales. Si subes archivos, reemplazan las URLs actuales.
+          Imagen, imagen 360, YouTube 360 y audio son opcionales. Si subes archivos, reemplazan las URLs actuales.
         </p>
       </div>
     </form>

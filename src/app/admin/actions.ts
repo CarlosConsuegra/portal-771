@@ -8,6 +8,7 @@ import {
   isSupabaseConfigured,
   supabaseStorageBucket,
 } from "@/lib/supabase/config";
+import { extractYouTubeVideoId } from "@/lib/youtube";
 
 function parseRequiredString(value: FormDataEntryValue | null, label: string) {
   if (typeof value !== "string" || value.trim() === "") {
@@ -64,7 +65,8 @@ function buildPortalPayload(
   titulo: string,
   imageUrl: string,
   image360Url: string | null,
-  audioUrl: string | null
+  audioUrl: string | null,
+  youtubeVideoId: string | null
 ) {
   return {
     slug: parseRequiredString(formData.get("slug"), "slug"),
@@ -75,6 +77,8 @@ function buildPortalPayload(
     marker_y: parseRequiredString(formData.get("markerY"), "marker_y"),
     image_url: imageUrl,
     image_360_url: image360Url,
+    media_type: parseRequiredString(formData.get("mediaType"), "media_type"),
+    youtube_video_id: youtubeVideoId,
     audio_url: audioUrl,
     status: parseRequiredString(formData.get("status"), "status"),
   };
@@ -84,9 +88,11 @@ function validatePublishedPortal(
   formData: FormData,
   titulo: string,
   imageUrl: string,
-  image360Url: string | null
+  image360Url: string | null,
+  youtubeVideoId: string | null
 ) {
   const status = parseOptionalString(formData.get("status")).toLowerCase();
+  const mediaType = parseOptionalString(formData.get("mediaType")) || "image_2d";
 
   if (status !== "published") {
     return;
@@ -123,8 +129,20 @@ function validatePublishedPortal(
     throw new Error("Faltan coordenadas del marcador");
   }
 
-  if (!imageUrl && !image360Url && !hasFile(formData.get("imageFile"))) {
+  if (
+    mediaType === "image_2d" &&
+    !imageUrl &&
+    !hasFile(formData.get("imageFile"))
+  ) {
     throw new Error("Falta imagen");
+  }
+
+  if (mediaType === "image_360" && !image360Url) {
+    throw new Error("Falta imagen 360");
+  }
+
+  if (mediaType === "youtube_360" && !youtubeVideoId) {
+    throw new Error("Falta video de YouTube 360");
   }
 }
 
@@ -158,9 +176,6 @@ export async function logout() {
 }
 
 export async function createPortal(formData: FormData) {
-  console.log([...formData.entries()]);
-  console.log("FORM DATA", Object.fromEntries(formData.entries()));
-  console.log("AUDIO_URL_FORM", formData.get("audio_url"));
   const tituloRaw = formData.get("titulo");
   const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
 
@@ -175,12 +190,16 @@ export async function createPortal(formData: FormData) {
     parseOptionalString(formData.get("audio_url")) ||
     parseOptionalString(formData.get("audioUrl"));
   const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
+  const youtubeVideoId = extractYouTubeVideoId(
+    parseOptionalString(formData.get("youtubeVideoInput"))
+  );
 
   validatePublishedPortal(
     formData,
     titulo,
     currentImageUrl,
-    currentImage360Url || null
+    currentImage360Url || null,
+    youtubeVideoId
   );
 
   const uploadedImageUrl = await maybeUploadFile(
@@ -191,13 +210,13 @@ export async function createPortal(formData: FormData) {
   );
   const audioUrl = currentAudioUrl || null;
   const image360Url = currentImage360Url || null;
-  console.log("AUDIO_URL_SAVE", audioUrl);
   const payload = buildPortalPayload(
     formData,
     titulo,
     uploadedImageUrl ?? currentImageUrl,
     image360Url,
-    audioUrl
+    audioUrl,
+    youtubeVideoId
   );
 
   const { data, error } = await supabase
@@ -216,9 +235,6 @@ export async function createPortal(formData: FormData) {
 }
 
 export async function updatePortal(id: string, formData: FormData) {
-  console.log([...formData.entries()]);
-  console.log("FORM DATA", Object.fromEntries(formData.entries()));
-  console.log("AUDIO_URL_FORM", formData.get("audio_url"));
   const tituloRaw = formData.get("titulo");
   const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
 
@@ -233,12 +249,16 @@ export async function updatePortal(id: string, formData: FormData) {
     parseOptionalString(formData.get("audio_url")) ||
     parseOptionalString(formData.get("audioUrl"));
   const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
+  const youtubeVideoId = extractYouTubeVideoId(
+    parseOptionalString(formData.get("youtubeVideoInput"))
+  );
 
   validatePublishedPortal(
     formData,
     titulo,
     currentImageUrl,
-    currentImage360Url || null
+    currentImage360Url || null,
+    youtubeVideoId
   );
 
   const uploadedImageUrl = await maybeUploadFile(
@@ -261,13 +281,13 @@ export async function updatePortal(id: string, formData: FormData) {
 
   const audioUrl = currentAudioUrl || existingPortal?.audio_url || null;
   const image360Url = currentImage360Url || null;
-  console.log("AUDIO_URL_SAVE", audioUrl);
   const payload = buildPortalPayload(
     formData,
     titulo,
     uploadedImageUrl ?? currentImageUrl,
     image360Url,
-    audioUrl
+    audioUrl,
+    youtubeVideoId
   );
 
   const { error } = await supabase.from("portales").update(payload).eq("id", id);
