@@ -8,6 +8,7 @@ type PortalMediaProps = {
   title: string;
   imageUrl: string;
   imageUrl360?: string | null;
+  video360Url?: string | null;
   mediaType: PortalMediaType;
   youtubeVideoId?: string | null;
 };
@@ -24,10 +25,24 @@ const Portal360Viewer = dynamic(
   }
 );
 
+const Portal360VideoViewer = dynamic(
+  () =>
+    import("./Portal360VideoViewer").then((mod) => mod.Portal360VideoViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mt-0.5 w-full md:mt-1">
+        <div className="mx-auto h-[60vh] max-h-[70vh] w-full max-w-[1680px] border border-line bg-[#ece8e0]" />
+      </div>
+    ),
+  }
+);
+
 export function PortalMedia({
   title,
   imageUrl,
   imageUrl360,
+  video360Url,
   mediaType,
   youtubeVideoId,
 }: PortalMediaProps) {
@@ -47,6 +62,10 @@ export function PortalMedia({
         </div>
       </figure>
     );
+  }
+
+  if (mediaType === "video_360" && video360Url) {
+    return <Portal360VideoViewer title={title} videoUrl={video360Url} />;
   }
 
   if (mediaType !== "image_360" || !imageUrl360) {

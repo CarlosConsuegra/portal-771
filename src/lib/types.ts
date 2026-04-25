@@ -8,7 +8,11 @@ export type MapRecord = {
 };
 
 export type PortalStatus = "draft" | "published";
-export type PortalMediaType = "image_2d" | "image_360" | "youtube_360";
+export type PortalMediaType =
+  | "image_2d"
+  | "image_360"
+  | "youtube_360"
+  | "video_360";
 
 export type Portal = {
   id: string;
@@ -18,6 +22,7 @@ export type Portal = {
   narrative: string;
   imageUrl: string;
   imageUrl360?: string | null;
+  video360Url?: string | null;
   mediaType: PortalMediaType;
   youtubeVideoId?: string | null;
   mapId: string;
@@ -42,6 +47,7 @@ export type PortalRow = {
   lng: number | null;
   image_url: string;
   image_360_url?: string | null;
+  video_360_url?: string | null;
   media_type?: PortalMediaType | null;
   youtube_video_id?: string | null;
   audio_url: string | null;

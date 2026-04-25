@@ -8,6 +8,7 @@ import {
   isSupabaseConfigured,
   supabaseStorageBucket,
 } from "@/lib/supabase/config";
+import { SavePortalState } from "@/components/admin/savePortalState";
 import { extractYouTubeVideoId } from "@/lib/youtube";
 
 function parseRequiredString(value: FormDataEntryValue | null, label: string) {
@@ -65,6 +66,7 @@ function buildPortalPayload(
   titulo: string,
   imageUrl: string,
   image360Url: string | null,
+  video360Url: string | null,
   audioUrl: string | null,
   youtubeVideoId: string | null
 ) {
@@ -77,6 +79,7 @@ function buildPortalPayload(
     marker_y: parseRequiredString(formData.get("markerY"), "marker_y"),
     image_url: imageUrl,
     image_360_url: image360Url,
+    video_360_url: video360Url,
     media_type: parseRequiredString(formData.get("mediaType"), "media_type"),
     youtube_video_id: youtubeVideoId,
     audio_url: audioUrl,
@@ -89,6 +92,7 @@ function validatePublishedPortal(
   titulo: string,
   imageUrl: string,
   image360Url: string | null,
+  video360Url: string | null,
   youtubeVideoId: string | null
 ) {
   const status = parseOptionalString(formData.get("status")).toLowerCase();
@@ -141,6 +145,10 @@ function validatePublishedPortal(
     throw new Error("Falta imagen 360");
   }
 
+  if (mediaType === "video_360" && !video360Url) {
+    throw new Error("Falta video 360");
+  }
+
   if (mediaType === "youtube_360" && !youtubeVideoId) {
     throw new Error("Falta video de YouTube 360");
   }
@@ -175,131 +183,166 @@ export async function logout() {
   redirect("/admin/login");
 }
 
-export async function createPortal(formData: FormData) {
-  const tituloRaw = formData.get("titulo");
-  const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
+export async function createPortal(
+  _previousState: SavePortalState,
+  formData: FormData
+) {
+  try {
+    const tituloRaw = formData.get("titulo");
+    const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
 
-  if (!titulo || titulo.length === 0) {
-    throw new Error("Falta titulo");
+    if (!titulo || titulo.length === 0) {
+      throw new Error("Falta titulo");
+    }
+
+    const supabase = await requireAdminSession();
+    const slug = parseRequiredString(formData.get("slug"), "slug");
+    const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
+    const currentAudioUrl =
+      parseOptionalString(formData.get("audio_url")) ||
+      parseOptionalString(formData.get("audioUrl"));
+    const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
+    const currentVideo360Url = parseOptionalString(formData.get("video_360_url"));
+    const youtubeVideoId = extractYouTubeVideoId(
+      parseOptionalString(formData.get("youtubeVideoInput"))
+    );
+
+    validatePublishedPortal(
+      formData,
+      titulo,
+      currentImageUrl,
+      currentImage360Url || null,
+      currentVideo360Url || null,
+      youtubeVideoId
+    );
+
+    const uploadedImageUrl = await maybeUploadFile(
+      formData.get("imageFile"),
+      slug,
+      supabase,
+      "images"
+    );
+    const audioUrl = currentAudioUrl || null;
+    const image360Url = currentImage360Url || null;
+    const video360Url = currentVideo360Url || null;
+    const payload = buildPortalPayload(
+      formData,
+      titulo,
+      uploadedImageUrl ?? currentImageUrl,
+      image360Url,
+      video360Url,
+      audioUrl,
+      youtubeVideoId
+    );
+
+    const { error } = await supabase.from("portales").insert(payload);
+
+    if (error) {
+      console.error("createPortal Supabase insert failed", error);
+      throw new Error(`No se pudo crear el portal: ${error.message}`);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+
+    return {
+      status: "success" as const,
+      message: "Portal guardado correctamente",
+    };
+  } catch {
+    return {
+      status: "error" as const,
+      message: "Error al guardar. Intenta nuevamente.",
+    };
   }
-
-  const supabase = await requireAdminSession();
-  const slug = parseRequiredString(formData.get("slug"), "slug");
-  const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
-  const currentAudioUrl =
-    parseOptionalString(formData.get("audio_url")) ||
-    parseOptionalString(formData.get("audioUrl"));
-  const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
-  const youtubeVideoId = extractYouTubeVideoId(
-    parseOptionalString(formData.get("youtubeVideoInput"))
-  );
-
-  validatePublishedPortal(
-    formData,
-    titulo,
-    currentImageUrl,
-    currentImage360Url || null,
-    youtubeVideoId
-  );
-
-  const uploadedImageUrl = await maybeUploadFile(
-    formData.get("imageFile"),
-    slug,
-    supabase,
-    "images"
-  );
-  const audioUrl = currentAudioUrl || null;
-  const image360Url = currentImage360Url || null;
-  const payload = buildPortalPayload(
-    formData,
-    titulo,
-    uploadedImageUrl ?? currentImageUrl,
-    image360Url,
-    audioUrl,
-    youtubeVideoId
-  );
-
-  const { data, error } = await supabase
-    .from("portales")
-    .insert(payload)
-    .select("id")
-    .single();
-
-  if (error) {
-    throw new Error(`No se pudo crear el portal: ${error.message}`);
-  }
-
-  revalidatePath("/");
-  revalidatePath("/admin");
-  redirect(`/admin/portal/${data.id}`);
 }
 
-export async function updatePortal(id: string, formData: FormData) {
-  const tituloRaw = formData.get("titulo");
-  const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
+export async function updatePortal(
+  id: string,
+  _previousState: SavePortalState,
+  formData: FormData
+) {
+  try {
+    const tituloRaw = formData.get("titulo");
+    const titulo = typeof tituloRaw === "string" ? tituloRaw.trim() : "";
 
-  if (!titulo || titulo.length === 0) {
-    throw new Error("Falta titulo");
-  }
+    if (!titulo || titulo.length === 0) {
+      throw new Error("Falta titulo");
+    }
 
-  const supabase = await requireAdminSession();
-  const slug = parseRequiredString(formData.get("slug"), "slug");
-  const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
-  const currentAudioUrl =
-    parseOptionalString(formData.get("audio_url")) ||
-    parseOptionalString(formData.get("audioUrl"));
-  const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
-  const youtubeVideoId = extractYouTubeVideoId(
-    parseOptionalString(formData.get("youtubeVideoInput"))
-  );
-
-  validatePublishedPortal(
-    formData,
-    titulo,
-    currentImageUrl,
-    currentImage360Url || null,
-    youtubeVideoId
-  );
-
-  const uploadedImageUrl = await maybeUploadFile(
-    formData.get("imageFile"),
-    slug,
-    supabase,
-    "images"
-  );
-  const { data: existingPortal, error: existingPortalError } = await supabase
-    .from("portales")
-    .select("audio_url")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (existingPortalError) {
-    throw new Error(
-      `No se pudo leer el audio actual del portal: ${existingPortalError.message}`
+    const supabase = await requireAdminSession();
+    const slug = parseRequiredString(formData.get("slug"), "slug");
+    const currentImageUrl = parseOptionalString(formData.get("imageUrl"));
+    const currentAudioUrl =
+      parseOptionalString(formData.get("audio_url")) ||
+      parseOptionalString(formData.get("audioUrl"));
+    const currentImage360Url = parseOptionalString(formData.get("image_360_url"));
+    const currentVideo360Url = parseOptionalString(formData.get("video_360_url"));
+    const youtubeVideoId = extractYouTubeVideoId(
+      parseOptionalString(formData.get("youtubeVideoInput"))
     );
+
+    validatePublishedPortal(
+      formData,
+      titulo,
+      currentImageUrl,
+      currentImage360Url || null,
+      currentVideo360Url || null,
+      youtubeVideoId
+    );
+
+    const uploadedImageUrl = await maybeUploadFile(
+      formData.get("imageFile"),
+      slug,
+      supabase,
+      "images"
+    );
+    const { data: existingPortal, error: existingPortalError } = await supabase
+      .from("portales")
+      .select("audio_url")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (existingPortalError) {
+      throw new Error(
+        `No se pudo leer el audio actual del portal: ${existingPortalError.message}`
+      );
+    }
+
+    const audioUrl = currentAudioUrl || existingPortal?.audio_url || null;
+    const image360Url = currentImage360Url || null;
+    const video360Url = currentVideo360Url || null;
+    const payload = buildPortalPayload(
+      formData,
+      titulo,
+      uploadedImageUrl ?? currentImageUrl,
+      image360Url,
+      video360Url,
+      audioUrl,
+      youtubeVideoId
+    );
+
+    const { error } = await supabase.from("portales").update(payload).eq("id", id);
+
+    if (error) {
+      console.error("updatePortal Supabase update failed", error);
+      throw new Error(`No se pudo actualizar el portal: ${error.message}`);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath(`/portal/${payload.slug}`);
+
+    return {
+      status: "success" as const,
+      message: "Portal guardado correctamente",
+    };
+  } catch {
+    return {
+      status: "error" as const,
+      message: "Error al guardar. Intenta nuevamente.",
+    };
   }
-
-  const audioUrl = currentAudioUrl || existingPortal?.audio_url || null;
-  const image360Url = currentImage360Url || null;
-  const payload = buildPortalPayload(
-    formData,
-    titulo,
-    uploadedImageUrl ?? currentImageUrl,
-    image360Url,
-    audioUrl,
-    youtubeVideoId
-  );
-
-  const { error } = await supabase.from("portales").update(payload).eq("id", id);
-
-  if (error) {
-    throw new Error(`No se pudo actualizar el portal: ${error.message}`);
-  }
-
-  revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath(`/portal/${payload.slug}`);
-  redirect(`/admin/portal/${id}`);
 }
 
 export async function deletePortal(id: string) {

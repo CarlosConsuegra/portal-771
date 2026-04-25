@@ -9,7 +9,9 @@ export const portals: Portal[] = [
     narrative:
       "Morning traffic had already moved on. The storefront reflected a stairwell, a parked bicycle, and a narrow band of pale sky. Nothing happened for several minutes and that became the event.",
     imageUrl: "/images/20220904_182222_preview.jpeg",
-    mediaType: "image_2d",
+    video360Url:
+      "https://pub-0492e685e0df43caa393d726e92b163c.r2.dev/rufina_web.mp4",
+    mediaType: "video_360",
     mapId: "mapa-771",
     lat: 19.4323,
     lng: -99.1332,

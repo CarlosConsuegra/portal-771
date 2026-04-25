@@ -53,6 +53,9 @@ alter table public.portales
 add column if not exists image_360_url text null;
 
 alter table public.portales
+add column if not exists video_360_url text null;
+
+alter table public.portales
 add column if not exists media_type text not null default 'image_2d';
 
 alter table public.portales

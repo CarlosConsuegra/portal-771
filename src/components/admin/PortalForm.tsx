@@ -6,6 +6,7 @@ import {
   type FormEvent,
   type MouseEvent,
   type RefObject,
+  useActionState,
   useCallback,
   useEffect,
   useMemo,
@@ -15,6 +16,10 @@ import {
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { supabaseStorageBucket } from "@/lib/supabase/config";
+import {
+  initialSavePortalState,
+  type SavePortalState,
+} from "@/components/admin/savePortalState";
 import { extractYouTubeVideoId } from "@/lib/youtube";
 import { MapRecord, Portal, PortalMediaType } from "@/lib/types";
 
@@ -22,7 +27,10 @@ type PortalFormProps = {
   mode: "create" | "edit";
   portal?: Portal;
   maps: MapRecord[];
-  action: (formData: FormData) => void | Promise<void>;
+  action: (
+    state: SavePortalState,
+    formData: FormData
+  ) => SavePortalState | Promise<SavePortalState>;
 };
 
 type FieldProps = {
@@ -63,6 +71,7 @@ const MEDIA_TYPE_OPTIONS: Array<{ value: PortalMediaType; label: string }> = [
   { value: "image_2d", label: "Imagen 2D" },
   { value: "image_360", label: "Imagen 360" },
   { value: "youtube_360", label: "YouTube 360" },
+  { value: "video_360", label: "Video 360" },
 ];
 
 function Field({
@@ -159,6 +168,7 @@ function validatePublishedData(formData: FormData): ValidationErrors {
     (parseTrimmed(formData.get("mediaType")) as PortalMediaType) || "image_2d";
   const imageUrl = parseTrimmed(formData.get("imageUrl"));
   const image360Url = parseTrimmed(formData.get("image_360_url"));
+  const video360Url = parseTrimmed(formData.get("video_360_url"));
   const youtubeVideoInput = parseTrimmed(formData.get("youtubeVideoInput"));
   const youtubeVideoId = extractYouTubeVideoId(youtubeVideoInput);
   const hasImageFile = hasFile(formData.get("imageFile"));
@@ -194,6 +204,10 @@ function validatePublishedData(formData: FormData): ValidationErrors {
     errors.media = "Falta imagen 360";
   }
 
+  if (mediaType === "video_360" && !video360Url) {
+    errors.media = "Falta video 360";
+  }
+
   if (mediaType === "youtube_360" && !youtubeVideoId) {
     errors.media = "Falta video de YouTube 360 valido";
   }
@@ -206,6 +220,10 @@ function validatePublishedData(formData: FormData): ValidationErrors {
 }
 
 export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
+  const [saveState, formAction, isPending] = useActionState(
+    action,
+    initialSavePortalState
+  );
   const formRef = useRef<HTMLFormElement>(null);
   const image360InputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -219,6 +237,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
   );
   const [mapId, setMapId] = useState(portal?.mapId ?? maps[0]?.id ?? "mapa-771");
   const [image360Url, setImage360Url] = useState(portal?.imageUrl360 ?? "");
+  const [video360Url, setVideo360Url] = useState(portal?.video360Url ?? "");
   const [youtubeVideoInput, setYouTubeVideoInput] = useState(
     portal?.youtubeVideoId ?? ""
   );
@@ -419,6 +438,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
     const nextErrors = syncValidation();
 
     if (
+      isPending ||
       image360UploadState === "uploading" ||
       audioUploadState === "uploading"
     ) {
@@ -473,6 +493,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
   }
 
   const disableSubmit =
+    isPending ||
     image360UploadState === "uploading" ||
     audioUploadState === "uploading" ||
     (isPublishedMode && Object.keys(errors).length > 0);
@@ -480,7 +501,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
   return (
     <form
       ref={formRef}
-      action={action}
+      action={formAction}
       onChange={syncValidation}
       onSubmit={handleSubmit}
       className="flex flex-col gap-10"
@@ -564,6 +585,14 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           onChange={(event) => setYouTubeVideoInput(event.currentTarget.value)}
           error={errors.media}
         />
+      ) : mediaType === "video_360" ? (
+        <Field
+          label="video_360_url"
+          name="video_360_url"
+          value={video360Url}
+          onChange={(event) => setVideo360Url(event.currentTarget.value)}
+          error={errors.media}
+        />
       ) : (
         <Field
           label="image_360_url"
@@ -619,7 +648,7 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
         />
       </label>
 
-      {mediaType !== "youtube_360" ? (
+      {mediaType === "image_360" ? (
         <label className="flex flex-col gap-3">
           <span className="text-xs uppercase tracking-[0.18em] text-muted">
             image_360_file
@@ -668,7 +697,11 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
           disabled={disableSubmit}
           className="w-fit border border-technical px-4 py-2 text-technical transition-colors hover:bg-technical hover:text-background disabled:opacity-50"
         >
-          {mode === "create" ? "Guardar borrador" : "Actualizar portal"}
+          {isPending
+            ? "Guardando..."
+            : mode === "create"
+              ? "Guardar borrador"
+              : "Actualizar portal"}
         </button>
         <Link
           href="/admin"
@@ -676,9 +709,22 @@ export function PortalForm({ mode, portal, maps, action }: PortalFormProps) {
         >
           Volver al archivo
         </Link>
-        <p className="quiet-label">
-          Imagen, imagen 360, YouTube 360 y audio son opcionales. Si subes archivos, reemplazan las URLs actuales.
-        </p>
+        <div className="flex flex-col gap-2">
+          <p className="quiet-label">
+            Imagen, imagen 360, video 360, YouTube 360 y audio son opcionales. Si subes archivos, reemplazan las URLs actuales.
+          </p>
+          {saveState.message ? (
+            <p
+              className={
+                saveState.status === "error"
+                  ? "text-sm text-technical"
+                  : "text-sm text-foreground"
+              }
+            >
+              {saveState.message}
+            </p>
+          ) : null}
+        </div>
       </div>
     </form>
   );

@@ -7,7 +7,12 @@ const PORTAL_COLUMNS = "*";
 
 function mapRowToPortal(row: PortalRow): Portal {
   const mediaType =
-    row.media_type ?? (row.image_360_url ? "image_360" : "image_2d");
+    row.media_type ??
+    (row.video_360_url
+      ? "video_360"
+      : row.image_360_url
+        ? "image_360"
+        : "image_2d");
 
   return {
     id: row.id,
@@ -17,6 +22,7 @@ function mapRowToPortal(row: PortalRow): Portal {
     narrative: row.narrativa,
     imageUrl: row.image_url,
     imageUrl360: row.image_360_url ?? null,
+    video360Url: row.video_360_url ?? null,
     mediaType,
     youtubeVideoId: row.youtube_video_id ?? null,
     mapId: row.mapa_id,
