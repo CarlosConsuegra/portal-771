@@ -8,6 +8,8 @@ type Portal360VideoViewerProps = {
   videoUrl: string;
 };
 
+type MobileExperienceStage = "prestart" | "choice" | "normal";
+
 const MIN_LAT = -85;
 const MAX_LAT = 85;
 const HALF_SQRT = Math.sqrt(0.5);
@@ -37,10 +39,10 @@ function getViewportSize(container: HTMLDivElement, useVisualViewport: boolean) 
   };
 }
 
-function getCameraProjection(immersive: boolean) {
-  if (immersive && typeof window !== "undefined") {
+function getCameraProjection(immersive: boolean, width: number, height: number) {
+  if (immersive) {
     return {
-      aspect: window.innerWidth / Math.max(window.innerHeight, 1),
+      aspect: width / Math.max(height, 1),
       fov: 90,
     };
   }
@@ -66,7 +68,8 @@ export function Portal360VideoViewer({
   const motionActiveRef = useRef(false);
   const isMobileLikeRef = useRef(false);
   const isFullscreenActiveRef = useRef(false);
-  const isImmersiveMobileRef = useRef(false);
+  const isExperienceModeRef = useRef(false);
+  const mobileStageRef = useRef<MobileExperienceStage>("prestart");
   const isPortraitMobileRef = useRef(false);
   const lonRef = useRef(0);
   const latRef = useRef(0);
@@ -101,6 +104,9 @@ export function Portal360VideoViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
   const isFullscreenActive = isFullscreen || isFallbackFullscreen;
+  const [isExperienceMode, setIsExperienceMode] = useState(isMobileLike);
+  const [mobileStage, setMobileStage] =
+    useState<MobileExperienceStage>("prestart");
   const [viewportSize, setViewportSize] = useState(() => {
     if (typeof window === "undefined") {
       return { width: 0, height: 0 };
@@ -111,13 +117,23 @@ export function Portal360VideoViewer({
       height: window.visualViewport?.height ?? window.innerHeight,
     };
   });
-  const isImmersiveMobile = isMobileLike && hasStartedPlayback;
+
+  const isMobileExperience = isMobileLike && isExperienceMode;
   const isPortraitMobile =
-    isImmersiveMobile && viewportSize.height > viewportSize.width;
+    isMobileExperience && viewportSize.height > viewportSize.width;
+  const isMobileNormalMode = isMobileExperience && mobileStage === "normal";
 
   useEffect(() => {
     isMobileLikeRef.current = isMobileLike;
   }, [isMobileLike]);
+
+  useEffect(() => {
+    motionActiveRef.current = motionActive;
+  }, [motionActive]);
+
+  useEffect(() => {
+    isFullscreenActiveRef.current = isFullscreenActive;
+  }, [isFullscreenActive]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -144,22 +160,18 @@ export function Portal360VideoViewer({
   }, []);
 
   useEffect(() => {
-    isImmersiveMobileRef.current = isImmersiveMobile;
+    isExperienceModeRef.current = isMobileExperience;
+    mobileStageRef.current = mobileStage;
     isPortraitMobileRef.current = isPortraitMobile;
     resizeRendererRef.current?.();
 
     if (rendererElementRef.current) {
-      rendererElementRef.current.style.display = isPortraitMobile ? "none" : "block";
+      rendererElementRef.current.style.display =
+        isPortraitMobile || (isMobileExperience && mobileStage !== "normal")
+          ? "none"
+          : "block";
     }
-  }, [isImmersiveMobile, isPortraitMobile, viewportSize]);
-
-  useEffect(() => {
-    motionActiveRef.current = motionActive;
-  }, [motionActive]);
-
-  useEffect(() => {
-    isFullscreenActiveRef.current = isFullscreenActive;
-  }, [isFullscreenActive]);
+  }, [isMobileExperience, mobileStage, isPortraitMobile, viewportSize]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -177,7 +189,7 @@ export function Portal360VideoViewer({
     const previousOverflow = document.body.style.overflow;
 
     document.body.style.overflow =
-      isFullscreenActive || isImmersiveMobile ? "hidden" : previousOverflow;
+      isFullscreenActive || isMobileExperience ? "hidden" : previousOverflow;
 
     const timeout = window.setTimeout(() => {
       resizeRendererRef.current?.();
@@ -187,7 +199,7 @@ export function Portal360VideoViewer({
       window.clearTimeout(timeout);
       document.body.style.overflow = previousOverflow;
     };
-  }, [isFullscreenActive, isImmersiveMobile]);
+  }, [isFullscreenActive, isMobileExperience]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -200,10 +212,12 @@ export function Portal360VideoViewer({
     const scene = new THREE.Scene();
     const initialSize = getViewportSize(
       container,
-      isImmersiveMobileRef.current || isFullscreenActiveRef.current
+      isExperienceModeRef.current || isFullscreenActiveRef.current
     );
     const initialProjection = getCameraProjection(
-      isImmersiveMobileRef.current || isFullscreenActiveRef.current
+      isExperienceModeRef.current || isFullscreenActiveRef.current,
+      initialSize.width,
+      initialSize.height
     );
     const camera = new THREE.PerspectiveCamera(
       initialProjection.fov,
@@ -224,7 +238,11 @@ export function Portal360VideoViewer({
     camera.updateProjectionMatrix();
     rendererRef.current = renderer;
     container.appendChild(rendererElement);
-    rendererElement.style.display = isPortraitMobileRef.current ? "none" : "block";
+    rendererElement.style.display =
+      isPortraitMobileRef.current ||
+      (isExperienceModeRef.current && mobileStageRef.current !== "normal")
+        ? "none"
+        : "block";
 
     const texture = new THREE.VideoTexture(video);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -238,6 +256,7 @@ export function Portal360VideoViewer({
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
+
     const euler = new THREE.Euler();
     const zee = new THREE.Vector3(0, 0, 1);
     const q0 = new THREE.Quaternion();
@@ -260,7 +279,10 @@ export function Portal360VideoViewer({
     };
 
     const renderFrame = () => {
-      if (isPortraitMobileRef.current) {
+      if (
+        isPortraitMobileRef.current ||
+        (isExperienceModeRef.current && mobileStageRef.current !== "normal")
+      ) {
         animationFrameRef.current = window.requestAnimationFrame(renderFrame);
         return;
       }
@@ -273,10 +295,12 @@ export function Portal360VideoViewer({
     const handleResize = () => {
       const nextSize = getViewportSize(
         container,
-        isImmersiveMobileRef.current || isFullscreenActiveRef.current
+        isExperienceModeRef.current || isFullscreenActiveRef.current
       );
       const nextProjection = getCameraProjection(
-        isImmersiveMobileRef.current || isFullscreenActiveRef.current
+        isExperienceModeRef.current || isFullscreenActiveRef.current,
+        nextSize.width,
+        nextSize.height
       );
       camera.aspect = nextProjection.aspect;
       camera.fov = nextProjection.fov;
@@ -386,7 +410,6 @@ export function Portal360VideoViewer({
       }
 
       interactionRef.current = null;
-
       video.pause();
 
       if (video.src) {
@@ -421,6 +444,8 @@ export function Portal360VideoViewer({
     setIsPlaying(false);
     setIsMuted(true);
     setHasStartedPlayback(false);
+    setIsExperienceMode(isMobileLike);
+    setMobileStage("prestart");
     setMotionActive(false);
     video.src = videoUrl;
     video.load();
@@ -463,7 +488,7 @@ export function Portal360VideoViewer({
       video.removeEventListener("volumechange", handleVolumeChange);
       video.removeEventListener("error", handleError);
     };
-  }, [videoUrl]);
+  }, [videoUrl, isMobileLike]);
 
   async function requestMotionPermission() {
     if (!motionSupported || isPortraitMobileRef.current) {
@@ -510,9 +535,11 @@ export function Portal360VideoViewer({
       if (options?.immersive && isMobileLike) {
         const isPortraitViewport = viewportSize.height > viewportSize.width;
 
-        if (!isPortraitViewport && motionSupported && !motionActive) {
+        if (!isPortraitViewport) {
           await requestMotionPermission();
         }
+
+        setMobileStage("choice");
       }
     } catch {
       setLoadError("No se pudo iniciar la reproduccion.");
@@ -527,7 +554,12 @@ export function Portal360VideoViewer({
     }
 
     if (video.paused) {
-      await startPlayback({ immersive: true });
+      if (isMobileLike) {
+        setIsExperienceMode(true);
+        return;
+      }
+
+      await startPlayback({ immersive: false });
       return;
     }
 
@@ -543,21 +575,6 @@ export function Portal360VideoViewer({
 
     video.muted = !video.muted;
     setIsMuted(video.muted);
-  }
-
-  async function toggleMotion() {
-    if (!isMobileLike || !motionSupported || isPortraitMobile) {
-      setMotionError("El movimiento no esta disponible en este dispositivo.");
-      return;
-    }
-
-    if (motionActive) {
-      setMotionActive(false);
-      setMotionError(null);
-      return;
-    }
-
-    await requestMotionPermission();
   }
 
   async function toggleFullscreen() {
@@ -607,7 +624,7 @@ export function Portal360VideoViewer({
     setIsFallbackFullscreen(true);
   }
 
-  async function closeImmersiveView() {
+  async function closeExperience() {
     const video = videoRef.current;
 
     if (video) {
@@ -617,6 +634,8 @@ export function Portal360VideoViewer({
     setMotionActive(false);
     setMotionError(null);
     setHasStartedPlayback(false);
+    setMobileStage("prestart");
+    setIsExperienceMode(false);
 
     if (document.fullscreenElement === shellRef.current) {
       await document.exitFullscreen();
@@ -634,12 +653,12 @@ export function Portal360VideoViewer({
         <div
           ref={shellRef}
           className={`relative mx-auto w-full bg-background ${
-            isImmersiveMobile || isFullscreenActive
+            isMobileExperience || isFullscreenActive
               ? "fixed inset-0 z-[9999] max-w-none overflow-hidden bg-black p-0"
               : "max-w-[1680px]"
           }`}
           style={
-            isImmersiveMobile
+            isMobileExperience
               ? {
                   width: "100vw",
                   height: "100dvh",
@@ -651,12 +670,12 @@ export function Portal360VideoViewer({
             ref={containerRef}
             aria-label={`${title} en video 360`}
             className={`map-paper relative w-full overflow-hidden ${
-              isImmersiveMobile || isFullscreenActive
+              isMobileExperience || isFullscreenActive
                 ? "h-full max-h-none bg-black"
                 : "aspect-[2/1] max-h-[70vh]"
             }`}
           >
-            {!isReady && !loadError && !isImmersiveMobile ? (
+            {!isReady && !loadError && !isMobileExperience ? (
               <div className="absolute inset-0 bg-[#ece8e0]" />
             ) : null}
 
@@ -668,11 +687,49 @@ export function Portal360VideoViewer({
               </div>
             ) : null}
 
-            {!hasStartedPlayback && !loadError ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/28 backdrop-blur-[2px]">
+            {isMobileExperience &&
+            !isPortraitMobile &&
+            mobileStage === "prestart" ? (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
                 <button
                   type="button"
                   onClick={() => void startPlayback({ immersive: true })}
+                  className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                >
+                  Iniciar
+                </button>
+              </div>
+            ) : null}
+
+            {isMobileExperience &&
+            !isPortraitMobile &&
+            mobileStage === "choice" ? (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/72">
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileStage("normal")}
+                    className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                  >
+                    Normal
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white/45"
+                  >
+                    VR
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {!isMobileLike && !hasStartedPlayback && !loadError ? (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/28 backdrop-blur-[2px]">
+                <button
+                  type="button"
+                  onClick={() => void startPlayback({ immersive: false })}
                   className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-background/94 text-[1.2rem] leading-none text-foreground transition-opacity hover:opacity-70"
                   aria-label="Iniciar video 360"
                 >
@@ -692,66 +749,60 @@ export function Portal360VideoViewer({
             className="hidden"
           />
 
-          <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
-            {isMobileLike && motionSupported && hasStartedPlayback && !motionActive && !isPortraitMobile ? (
+          {!isMobileLike || isMobileNormalMode ? (
+            <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
               <button
                 type="button"
-                onClick={toggleMotion}
+                onClick={togglePlayback}
                 className={CONTROL_BUTTON_CLASS}
-                aria-label="Activar movimiento"
+                aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
               >
-                ◎
+                {isPlaying ? "❚❚" : "▶"}
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={togglePlayback}
-              className={CONTROL_BUTTON_CLASS}
-              aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
-            >
-              {isPlaying ? "❚❚" : "▶"}
-            </button>
-            <button
-              type="button"
-              onClick={toggleMuted}
-              className={CONTROL_BUTTON_CLASS}
-              aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
-            >
-              {isMuted ? "🔇" : "🔊"}
-            </button>
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className={CONTROL_BUTTON_DISABLED_CLASS}
-              aria-label="VR pronto"
-            >
-              🥽
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={toggleMuted}
+                className={CONTROL_BUTTON_CLASS}
+                aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
+              >
+                {isMuted ? "🔇" : "🔊"}
+              </button>
+              {!isMobileLike ? (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className={CONTROL_BUTTON_DISABLED_CLASS}
+                  aria-label="VR pronto"
+                >
+                  🥽
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           <button
             type="button"
-            onClick={isImmersiveMobile ? closeImmersiveView : toggleFullscreen}
+            onClick={isMobileExperience ? closeExperience : toggleFullscreen}
             className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
             aria-label={
-              isImmersiveMobile || isFullscreenActive
+              isMobileExperience || isFullscreenActive
                 ? "Cerrar visor"
                 : "Entrar en fullscreen"
             }
           >
-            {isImmersiveMobile || isFullscreenActive ? "✕" : "⛶"}
+            {isMobileExperience || isFullscreenActive ? "✕" : "⛶"}
           </button>
 
           {loadError || motionError ? (
             <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
               {loadError ?? motionError}
             </p>
-          ) : (
+          ) : !isMobileExperience || mobileStage === "normal" ? (
             <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
               arrastra para explorar 360
             </p>
-          )}
+          ) : null}
         </div>
       </div>
     </figure>
