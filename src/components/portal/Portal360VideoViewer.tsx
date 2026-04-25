@@ -11,10 +11,19 @@ type Portal360VideoViewerProps = {
 const MIN_LAT = -85;
 const MAX_LAT = 85;
 const HALF_SQRT = Math.sqrt(0.5);
+const CONTROL_BUTTON_CLASS =
+  "flex h-9 w-9 items-center justify-center rounded-full border border-line bg-background/86 text-[1rem] leading-none text-foreground transition-opacity hover:opacity-70";
+const CONTROL_BUTTON_DISABLED_CLASS =
+  "flex h-9 w-9 items-center justify-center rounded-full border border-line bg-background/70 text-[1rem] leading-none text-muted";
 
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
 };
+
+function getCameraFov(width: number, height: number) {
+  const aspect = width / Math.max(height, 1);
+  return aspect < 1 ? 90 : 70;
+}
 
 export function Portal360VideoViewer({
   title,
@@ -106,20 +115,24 @@ export function Portal360VideoViewer({
     const initialWidth = container.clientWidth;
     const initialHeight = Math.max(container.clientHeight, 1);
     const camera = new THREE.PerspectiveCamera(
-      80,
+      getCameraFov(initialWidth, initialHeight),
       initialWidth / initialHeight,
       0.1,
       1000
     );
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const rendererElement = renderer.domElement;
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    if ("outputColorSpace" in renderer) {
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+    }
     renderer.setSize(initialWidth, initialHeight, false);
     rendererRef.current = renderer;
     container.appendChild(rendererElement);
 
     const texture = new THREE.VideoTexture(video);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.generateMipmaps = false;
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.format = THREE.RGBFormat;
@@ -160,6 +173,7 @@ export function Portal360VideoViewer({
       const width = container.clientWidth;
       const height = Math.max(container.clientHeight, 1);
       camera.aspect = width / height;
+      camera.fov = getCameraFov(width, height);
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
     };
@@ -510,9 +524,10 @@ export function Portal360VideoViewer({
                 <button
                   type="button"
                   onClick={() => void startPlayback({ immersive: true })}
-                  className="border border-line bg-background/94 px-5 py-3 text-[0.7rem] uppercase tracking-[0.22em] text-foreground transition-opacity hover:opacity-70"
+                  className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-background/94 text-[1.2rem] leading-none text-foreground transition-opacity hover:opacity-70"
+                  aria-label="Iniciar video 360"
                 >
-                  play
+                  ▶
                 </button>
               </div>
             ) : null}
@@ -528,54 +543,61 @@ export function Portal360VideoViewer({
             className="hidden"
           />
 
-          <div className="absolute top-2 left-2 flex gap-1.5">
+          <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
             {isMobileLike && motionSupported && hasStartedPlayback && !motionActive ? (
               <button
                 type="button"
                 onClick={toggleMotion}
-                className="border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+                className={CONTROL_BUTTON_CLASS}
+                aria-label="Activar movimiento"
               >
-                activar movimiento
+                ◎
               </button>
             ) : null}
             <button
               type="button"
               onClick={togglePlayback}
-              className="border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+              className={CONTROL_BUTTON_CLASS}
+              aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
             >
-              {isPlaying ? "pausar" : "play"}
+              {isPlaying ? "❚❚" : "▶"}
             </button>
             <button
               type="button"
               onClick={toggleMuted}
-              className="border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+              className={CONTROL_BUTTON_CLASS}
+              aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
             >
-              {isMuted ? "activar audio" : "silenciar"}
+              {isMuted ? "🔇" : "🔊"}
             </button>
             <button
               type="button"
               disabled
               aria-disabled="true"
-              className="border border-line bg-background/70 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-muted"
+              className={CONTROL_BUTTON_DISABLED_CLASS}
+              aria-label="VR pronto"
             >
-              vr
+              🥽
             </button>
           </div>
 
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="absolute top-2 right-2 border border-line bg-background/88 px-2.5 py-1.5 text-[0.62rem] uppercase tracking-[0.16em] text-foreground transition-opacity hover:opacity-70"
+            className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
+            aria-label={
+              isFullscreenActive ? "Salir de fullscreen" : "Entrar en fullscreen"
+            }
           >
-            {isFullscreenActive ? "cerrar" : "fullscreen"}
+            {isFullscreenActive ? "✕" : "⛶"}
           </button>
 
           {loadError || motionError ? (
-            <p className="absolute right-2 bottom-2 max-w-[16rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+            <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
               {loadError ?? motionError}
             </p>
           ) : (
-            <p className="absolute right-2 bottom-2 max-w-[16rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+            <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
               arrastra para explorar 360
             </p>
           )}
