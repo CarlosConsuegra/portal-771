@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 
 type Portal360VideoViewerProps = {
@@ -122,6 +123,7 @@ export function Portal360VideoViewer({
   const isPortraitMobile =
     isMobileExperience && viewportSize.height > viewportSize.width;
   const isMobileNormalMode = isMobileExperience && mobileStage === "normal";
+  const containerMode = isMobileExperience ? "mobile" : "embed";
 
   useEffect(() => {
     isMobileLikeRef.current = isMobileLike;
@@ -429,7 +431,7 @@ export function Portal360VideoViewer({
         container.removeChild(rendererElement);
       }
     };
-  }, [videoUrl]);
+  }, [videoUrl, containerMode]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -647,163 +649,200 @@ export function Portal360VideoViewer({
     }
   }
 
+  const embeddedViewer = (
+    <div
+      ref={shellRef}
+      className={`relative mx-auto w-full bg-background ${
+        isFullscreenActive ? "fixed inset-0 z-[9999] max-w-none overflow-hidden bg-black p-0" : "max-w-[1680px]"
+      }`}
+    >
+      <div
+        ref={containerRef}
+        aria-label={`${title} en video 360`}
+        className={`map-paper relative w-full overflow-hidden ${
+          isFullscreenActive ? "h-full max-h-none bg-black" : "aspect-[2/1] max-h-[70vh]"
+        }`}
+      >
+        {!isReady && !loadError ? (
+          <div className="absolute inset-0 bg-[#ece8e0]" />
+        ) : null}
+
+        {!hasStartedPlayback && !loadError ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/28 backdrop-blur-[2px]">
+            <button
+              type="button"
+              onClick={() => void startPlayback({ immersive: false })}
+              className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-background/94 text-[1.2rem] leading-none text-foreground transition-opacity hover:opacity-70"
+              aria-label="Iniciar video 360"
+            >
+              ▶
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={togglePlayback}
+          className={CONTROL_BUTTON_CLASS}
+          aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
+        >
+          {isPlaying ? "❚❚" : "▶"}
+        </button>
+        <button
+          type="button"
+          onClick={toggleMuted}
+          className={CONTROL_BUTTON_CLASS}
+          aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
+        >
+          {isMuted ? "🔇" : "🔊"}
+        </button>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className={CONTROL_BUTTON_DISABLED_CLASS}
+          aria-label="VR pronto"
+        >
+          🥽
+        </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
+        aria-label={isFullscreenActive ? "Cerrar visor" : "Entrar en fullscreen"}
+      >
+        {isFullscreenActive ? "✕" : "⛶"}
+      </button>
+
+      {loadError || motionError ? (
+        <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+          {loadError ?? motionError}
+        </p>
+      ) : (
+        <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+          arrastra para explorar 360
+        </p>
+      )}
+    </div>
+  );
+
+  const mobileOverlay =
+    isMobileExperience && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[99999] overflow-hidden bg-black"
+            style={{ width: "100vw", height: "100dvh" }}
+          >
+            <div
+              ref={containerRef}
+              aria-label={`${title} en video 360`}
+              className="relative h-full w-full overflow-hidden bg-black"
+            >
+              {isPortraitMobile ? (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
+                  <p className="text-center text-sm uppercase tracking-[0.2em] text-white">
+                    gira tu dispositivo
+                  </p>
+                </div>
+              ) : null}
+
+              {!isPortraitMobile && mobileStage === "prestart" ? (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
+                  <button
+                    type="button"
+                    onClick={() => void startPlayback({ immersive: true })}
+                    className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                  >
+                    Iniciar
+                  </button>
+                </div>
+              ) : null}
+
+              {!isPortraitMobile && mobileStage === "choice" ? (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/72">
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMobileStage("normal")}
+                      className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white/45"
+                    >
+                      VR
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {isMobileNormalMode ? (
+              <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={togglePlayback}
+                  className={CONTROL_BUTTON_CLASS}
+                  aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
+                >
+                  {isPlaying ? "❚❚" : "▶"}
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleMuted}
+                  className={CONTROL_BUTTON_CLASS}
+                  aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
+                >
+                  {isMuted ? "🔇" : "🔊"}
+                </button>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={closeExperience}
+              className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
+              aria-label="Cerrar visor"
+            >
+              ✕
+            </button>
+
+            {loadError || motionError ? (
+              <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+                {loadError ?? motionError}
+              </p>
+            ) : isMobileNormalMode ? (
+              <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
+                arrastra para explorar 360
+              </p>
+            ) : null}
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <figure className="w-full">
       <div className="mt-0.5 w-full md:mt-1">
-        <div
-          ref={shellRef}
-          className={`relative mx-auto w-full bg-background ${
-            isMobileExperience || isFullscreenActive
-              ? "fixed inset-0 z-[9999] max-w-none overflow-hidden bg-black p-0"
-              : "max-w-[1680px]"
-          }`}
-          style={
-            isMobileExperience
-              ? {
-                  width: "100vw",
-                  height: "100dvh",
-                }
-              : undefined
-          }
-        >
-          <div
-            ref={containerRef}
-            aria-label={`${title} en video 360`}
-            className={`map-paper relative w-full overflow-hidden ${
-              isMobileExperience || isFullscreenActive
-                ? "h-full max-h-none bg-black"
-                : "aspect-[2/1] max-h-[70vh]"
-            }`}
-          >
-            {!isReady && !loadError && !isMobileExperience ? (
-              <div className="absolute inset-0 bg-[#ece8e0]" />
-            ) : null}
-
-            {isPortraitMobile ? (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
-                <p className="text-center text-sm uppercase tracking-[0.2em] text-white">
-                  gira tu dispositivo
-                </p>
-              </div>
-            ) : null}
-
-            {isMobileExperience &&
-            !isPortraitMobile &&
-            mobileStage === "prestart" ? (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
-                <button
-                  type="button"
-                  onClick={() => void startPlayback({ immersive: true })}
-                  className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
-                >
-                  Iniciar
-                </button>
-              </div>
-            ) : null}
-
-            {isMobileExperience &&
-            !isPortraitMobile &&
-            mobileStage === "choice" ? (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/72">
-                <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMobileStage("normal")}
-                    className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    aria-disabled="true"
-                    className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white/45"
-                  >
-                    VR
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {!isMobileLike && !hasStartedPlayback && !loadError ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/28 backdrop-blur-[2px]">
-                <button
-                  type="button"
-                  onClick={() => void startPlayback({ immersive: false })}
-                  className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-background/94 text-[1.2rem] leading-none text-foreground transition-opacity hover:opacity-70"
-                  aria-label="Iniciar video 360"
-                >
-                  ▶
-                </button>
-              </div>
-            ) : null}
-          </div>
-
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            preload="metadata"
-            playsInline
-            muted
-            loop
-            className="hidden"
-          />
-
-          {!isMobileLike || isMobileNormalMode ? (
-            <div className="absolute top-2 left-2 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={togglePlayback}
-                className={CONTROL_BUTTON_CLASS}
-                aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
-              >
-                {isPlaying ? "❚❚" : "▶"}
-              </button>
-              <button
-                type="button"
-                onClick={toggleMuted}
-                className={CONTROL_BUTTON_CLASS}
-                aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
-              >
-                {isMuted ? "🔇" : "🔊"}
-              </button>
-              {!isMobileLike ? (
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  className={CONTROL_BUTTON_DISABLED_CLASS}
-                  aria-label="VR pronto"
-                >
-                  🥽
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={isMobileExperience ? closeExperience : toggleFullscreen}
-            className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
-            aria-label={
-              isMobileExperience || isFullscreenActive
-                ? "Cerrar visor"
-                : "Entrar en fullscreen"
-            }
-          >
-            {isMobileExperience || isFullscreenActive ? "✕" : "⛶"}
-          </button>
-
-          {loadError || motionError ? (
-            <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
-              {loadError ?? motionError}
-            </p>
-          ) : !isMobileExperience || mobileStage === "normal" ? (
-            <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-line bg-background/88 px-2.5 py-2 text-[0.66rem] leading-relaxed text-muted">
-              arrastra para explorar 360
-            </p>
-          ) : null}
-        </div>
+        {embeddedViewer}
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          preload="metadata"
+          playsInline
+          muted
+          loop
+          className="hidden"
+        />
+        {mobileOverlay}
       </div>
     </figure>
   );
