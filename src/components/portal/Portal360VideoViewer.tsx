@@ -14,10 +14,10 @@ type MobileExperienceStage = "prestart" | "choice" | "normal";
 const MIN_LAT = -85;
 const MAX_LAT = 85;
 const HALF_SQRT = Math.sqrt(0.5);
-const CONTROL_BUTTON_CLASS =
-  "flex h-9 w-9 items-center justify-center rounded-full border border-line bg-background/86 text-[1rem] leading-none text-foreground transition-opacity hover:opacity-70";
-const CONTROL_BUTTON_DISABLED_CLASS =
-  "flex h-9 w-9 items-center justify-center rounded-full border border-line bg-background/70 text-[1rem] leading-none text-muted";
+const DESKTOP_TEXT_BUTTON_CLASS =
+  "border border-line bg-background/92 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-foreground transition-opacity hover:opacity-70";
+const DESKTOP_TEXT_BUTTON_DISABLED_CLASS =
+  "border border-line bg-background/70 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-muted";
 const MOBILE_TEXT_BUTTON_CLASS =
   "border border-white/70 bg-black/28 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-70";
 const MOBILE_TEXT_BUTTON_DISABLED_CLASS =
@@ -776,37 +776,37 @@ export function Portal360VideoViewer({
         <button
           type="button"
           onClick={togglePlayback}
-          className={CONTROL_BUTTON_CLASS}
+          className={DESKTOP_TEXT_BUTTON_CLASS}
           aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
         >
-          {isPlaying ? "❚❚" : "▶"}
+          {isPlaying ? "PAUSA" : "PLAY"}
         </button>
         <button
           type="button"
           onClick={toggleMuted}
-          className={CONTROL_BUTTON_CLASS}
+          className={DESKTOP_TEXT_BUTTON_CLASS}
           aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
         >
-          {isMuted ? "🔇" : "🔊"}
+          {isMuted ? "AUDIO" : "SILENCIAR"}
         </button>
         <button
           type="button"
           disabled
           aria-disabled="true"
-          className={CONTROL_BUTTON_DISABLED_CLASS}
+          className={DESKTOP_TEXT_BUTTON_DISABLED_CLASS}
           aria-label="VR pronto"
         >
-          🥽
+          VR
         </button>
       </div>
 
       <button
         type="button"
         onClick={toggleFullscreen}
-        className={`absolute top-2 right-2 ${CONTROL_BUTTON_CLASS}`}
+        className={`absolute top-2 right-2 ${DESKTOP_TEXT_BUTTON_CLASS}`}
         aria-label={isFullscreenActive ? "Cerrar visor" : "Entrar en fullscreen"}
       >
-        {isFullscreenActive ? "✕" : "⛶"}
+        {isFullscreenActive ? "CERRAR" : "FULLSCREEN"}
       </button>
 
       {loadError || motionError ? (
