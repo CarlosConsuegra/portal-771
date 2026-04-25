@@ -22,7 +22,7 @@ type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
 
 function getCameraFov(width: number, height: number) {
   const aspect = width / Math.max(height, 1);
-  return aspect < 1 ? 90 : 70;
+  return aspect < 1 ? 65 : 75;
 }
 
 export function Portal360VideoViewer({
@@ -122,7 +122,7 @@ export function Portal360VideoViewer({
     );
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const rendererElement = renderer.domElement;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
     if ("outputColorSpace" in renderer) {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     }
@@ -137,7 +137,7 @@ export function Portal360VideoViewer({
     texture.magFilter = THREE.LinearFilter;
     texture.format = THREE.RGBFormat;
 
-    const geometry = new THREE.SphereGeometry(500, 60, 40);
+    const geometry = new THREE.SphereGeometry(500, 96, 64);
     geometry.scale(-1, 1, 1);
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
