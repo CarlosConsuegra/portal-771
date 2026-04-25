@@ -193,6 +193,7 @@ export function Portal360VideoViewer({
 
   useEffect(() => {
     vrModeRef.current = vrMode;
+    resizeRendererRef.current?.();
   }, [vrMode]);
 
   useEffect(() => {
@@ -892,7 +893,7 @@ export function Portal360VideoViewer({
                   <button
                     type="button"
                     onClick={() => void startPlayback({ immersive: true })}
-                    className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                    className={MOBILE_TEXT_BUTTON_CLASS}
                   >
                     Iniciar
                   </button>
@@ -908,7 +909,7 @@ export function Portal360VideoViewer({
                         setVrMode(false);
                         setMobileStage("normal");
                       }}
-                      className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                      className={MOBILE_TEXT_BUTTON_CLASS}
                     >
                       Normal
                     </button>
@@ -918,7 +919,7 @@ export function Portal360VideoViewer({
                         setVrMode(true);
                         setMobileStage("vr");
                       }}
-                      className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                      className={MOBILE_TEXT_BUTTON_CLASS}
                     >
                       VR
                     </button>
@@ -974,6 +975,17 @@ export function Portal360VideoViewer({
                 className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
               >
                 SALIR VR
+              </button>
+            ) : isMobileNormalMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setVrMode(true);
+                  setMobileStage("vr");
+                }}
+                className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
+              >
+                VR
               </button>
             ) : (
               <button
