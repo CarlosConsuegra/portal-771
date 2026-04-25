@@ -20,11 +20,6 @@ type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
 };
 
-function getCameraFov(width: number, height: number) {
-  const aspect = width / Math.max(height, 1);
-  return aspect < 1 ? 75 : 90;
-}
-
 function getViewportSize(container: HTMLDivElement, useVisualViewport: boolean) {
   if (useVisualViewport && typeof window !== "undefined") {
     const width = window.visualViewport?.width ?? window.innerWidth;
@@ -42,6 +37,20 @@ function getViewportSize(container: HTMLDivElement, useVisualViewport: boolean) 
   };
 }
 
+function getCameraProjection(immersive: boolean) {
+  if (immersive && typeof window !== "undefined") {
+    return {
+      aspect: window.innerWidth / Math.max(window.innerHeight, 1),
+      fov: 90,
+    };
+  }
+
+  return {
+    aspect: 16 / 9,
+    fov: 75,
+  };
+}
+
 export function Portal360VideoViewer({
   title,
   videoUrl,
@@ -56,6 +65,7 @@ export function Portal360VideoViewer({
   const motionQuaternionRef = useRef(new THREE.Quaternion());
   const motionActiveRef = useRef(false);
   const isMobileLikeRef = useRef(false);
+  const isFullscreenActiveRef = useRef(false);
   const isImmersiveMobileRef = useRef(false);
   const isPortraitMobileRef = useRef(false);
   const lonRef = useRef(0);
@@ -148,6 +158,10 @@ export function Portal360VideoViewer({
   }, [motionActive]);
 
   useEffect(() => {
+    isFullscreenActiveRef.current = isFullscreenActive;
+  }, [isFullscreenActive]);
+
+  useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement === shellRef.current);
     };
@@ -183,9 +197,12 @@ export function Portal360VideoViewer({
 
     const scene = new THREE.Scene();
     const initialSize = getViewportSize(container, isMobileLikeRef.current);
+    const initialProjection = getCameraProjection(
+      isImmersiveMobileRef.current || isFullscreenActiveRef.current
+    );
     const camera = new THREE.PerspectiveCamera(
-      getCameraFov(initialSize.width, initialSize.height),
-      initialSize.width / initialSize.height,
+      initialProjection.fov,
+      initialProjection.aspect,
       0.1,
       1000
     );
@@ -197,7 +214,8 @@ export function Portal360VideoViewer({
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     }
     renderer.setSize(initialSize.width, initialSize.height, false);
-    camera.aspect = initialSize.width / initialSize.height;
+    camera.aspect = initialProjection.aspect;
+    camera.fov = initialProjection.fov;
     camera.updateProjectionMatrix();
     rendererRef.current = renderer;
     container.appendChild(rendererElement);
@@ -249,7 +267,11 @@ export function Portal360VideoViewer({
 
     const handleResize = () => {
       const nextSize = getViewportSize(container, isMobileLikeRef.current);
-      camera.aspect = nextSize.width / nextSize.height;
+      const nextProjection = getCameraProjection(
+        isImmersiveMobileRef.current || isFullscreenActiveRef.current
+      );
+      camera.aspect = nextProjection.aspect;
+      camera.fov = nextProjection.fov;
       camera.updateProjectionMatrix();
       renderer.setSize(nextSize.width, nextSize.height, false);
     };
