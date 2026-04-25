@@ -9,7 +9,7 @@ type Portal360VideoViewerProps = {
   videoUrl: string;
 };
 
-type MobileExperienceStage = "prestart" | "choice" | "normal";
+type MobileExperienceStage = "prestart" | "choice" | "normal" | "vr";
 
 const MIN_LAT = -85;
 const MAX_LAT = 85;
@@ -150,6 +150,7 @@ export function Portal360VideoViewer({
   const isPortraitMobile =
     isMobileExperience && viewportSize.height > viewportSize.width;
   const isMobileNormalMode = isMobileExperience && mobileStage === "normal";
+  const isMobileVrMode = isMobileExperience && mobileStage === "vr";
   const containerMode = isMobileExperience ? "mobile" : "embed";
   const narrativeText = getNarrativeText(title);
   const narrativeAudioElement = getNarrativeAudioElement();
@@ -224,7 +225,10 @@ export function Portal360VideoViewer({
 
     if (rendererElementRef.current) {
       rendererElementRef.current.style.display =
-        isPortraitMobile || (isMobileExperience && mobileStage !== "normal")
+        isPortraitMobile ||
+        (isMobileExperience &&
+          mobileStage !== "normal" &&
+          mobileStage !== "vr")
           ? "none"
           : "block";
     }
@@ -282,6 +286,8 @@ export function Portal360VideoViewer({
       0.1,
       1000
     );
+    const leftCamera = camera.clone();
+    const rightCamera = camera.clone();
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const rendererElement = renderer.domElement;
     rendererElementRef.current = rendererElement;
@@ -297,7 +303,9 @@ export function Portal360VideoViewer({
     container.appendChild(rendererElement);
     rendererElement.style.display =
       isPortraitMobileRef.current ||
-      (isExperienceModeRef.current && mobileStageRef.current !== "normal")
+      (isExperienceModeRef.current &&
+        mobileStageRef.current !== "normal" &&
+        mobileStageRef.current !== "vr")
         ? "none"
         : "block";
 
@@ -338,14 +346,58 @@ export function Portal360VideoViewer({
     const renderFrame = () => {
       if (
         isPortraitMobileRef.current ||
-        (isExperienceModeRef.current && mobileStageRef.current !== "normal")
+        (isExperienceModeRef.current &&
+          mobileStageRef.current !== "normal" &&
+          mobileStageRef.current !== "vr")
       ) {
         animationFrameRef.current = window.requestAnimationFrame(renderFrame);
         return;
       }
 
       updateCamera();
-      renderer.render(scene, camera);
+
+      if (isExperienceModeRef.current && mobileStageRef.current === "vr") {
+        const viewportWidth = renderer.domElement.width;
+        const viewportHeight = renderer.domElement.height;
+        const halfWidth = Math.floor(viewportWidth / 2);
+
+        leftCamera.position.copy(camera.position);
+        leftCamera.quaternion.copy(camera.quaternion);
+        leftCamera.position.x = -0.03;
+        leftCamera.aspect = 0.5 * camera.aspect;
+        leftCamera.fov = camera.fov;
+        leftCamera.updateProjectionMatrix();
+
+        rightCamera.position.copy(camera.position);
+        rightCamera.quaternion.copy(camera.quaternion);
+        rightCamera.position.x = 0.03;
+        rightCamera.aspect = 0.5 * camera.aspect;
+        rightCamera.fov = camera.fov;
+        rightCamera.updateProjectionMatrix();
+
+        renderer.setScissorTest(true);
+        renderer.setViewport(0, 0, halfWidth, viewportHeight);
+        renderer.setScissor(0, 0, halfWidth, viewportHeight);
+        renderer.render(scene, leftCamera);
+
+        renderer.setViewport(
+          halfWidth,
+          0,
+          viewportWidth - halfWidth,
+          viewportHeight
+        );
+        renderer.setScissor(
+          halfWidth,
+          0,
+          viewportWidth - halfWidth,
+          viewportHeight
+        );
+        renderer.render(scene, rightCamera);
+        renderer.setScissorTest(false);
+      } else {
+        renderer.render(scene, camera);
+      }
+
       animationFrameRef.current = window.requestAnimationFrame(renderFrame);
     };
 
@@ -865,9 +917,8 @@ export function Portal360VideoViewer({
                     </button>
                     <button
                       type="button"
-                      disabled
-                      aria-disabled="true"
-                      className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white/45"
+                      onClick={() => setMobileStage("vr")}
+                      className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
                     >
                       VR
                     </button>
@@ -913,15 +964,25 @@ export function Portal360VideoViewer({
               </div>
             ) : null}
 
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_DISABLED_CLASS}`}
-              aria-label="VR pronto"
-            >
-              VR
-            </button>
+            {isMobileVrMode ? (
+              <button
+                type="button"
+                onClick={() => setMobileStage("normal")}
+                className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
+              >
+                SALIR VR
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_DISABLED_CLASS}`}
+                aria-label="VR pronto"
+              >
+                VR
+              </button>
+            )}
 
             {loadError || motionError ? (
               <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-white/35 bg-black/55 px-3 py-2 text-[0.68rem] leading-relaxed text-white">
