@@ -20,6 +20,8 @@ const DESKTOP_TEXT_BUTTON_DISABLED_CLASS =
   "border border-line bg-background/70 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-muted";
 const MOBILE_TEXT_BUTTON_CLASS =
   "border border-white/70 bg-black/28 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-70";
+const MOBILE_START_BUTTON_CLASS =
+  "border border-white/70 bg-black/40 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70";
 const MOBILE_TEXT_BUTTON_DISABLED_CLASS =
   "border border-white/25 bg-black/18 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white/45";
 
@@ -369,7 +371,12 @@ export function Portal360VideoViewer({
         camera.fov = 90;
         camera.updateProjectionMatrix();
 
+        renderer.autoClear = false;
         renderer.setScissorTest(true);
+        renderer.setViewport(0, 0, viewportWidth, viewportHeight);
+        renderer.setScissor(0, 0, viewportWidth, viewportHeight);
+        renderer.clear();
+
         renderer.setViewport(0, 0, halfWidth, viewportHeight);
         renderer.setScissor(0, 0, halfWidth, viewportHeight);
         renderer.render(scene, camera);
@@ -388,6 +395,7 @@ export function Portal360VideoViewer({
         );
         renderer.render(scene, camera);
         renderer.setScissorTest(false);
+        renderer.autoClear = true;
       } else {
         renderer.render(scene, camera);
       }
@@ -893,7 +901,7 @@ export function Portal360VideoViewer({
                   <button
                     type="button"
                     onClick={() => void startPlayback({ immersive: true })}
-                    className={MOBILE_TEXT_BUTTON_CLASS}
+                    className={MOBILE_START_BUTTON_CLASS}
                   >
                     Iniciar
                   </button>
@@ -909,7 +917,7 @@ export function Portal360VideoViewer({
                         setVrMode(false);
                         setMobileStage("normal");
                       }}
-                      className={MOBILE_TEXT_BUTTON_CLASS}
+                      className={MOBILE_START_BUTTON_CLASS}
                     >
                       Normal
                     </button>
@@ -919,12 +927,16 @@ export function Portal360VideoViewer({
                         setVrMode(true);
                         setMobileStage("vr");
                       }}
-                      className={MOBILE_TEXT_BUTTON_CLASS}
+                      className={MOBILE_START_BUTTON_CLASS}
                     >
                       VR
                     </button>
                   </div>
                 </div>
+              ) : null}
+
+              {isMobileVrMode ? (
+                <div className="pointer-events-none absolute top-0 bottom-0 left-1/2 z-10 w-px -translate-x-1/2 bg-white/35" />
               ) : null}
             </div>
 
