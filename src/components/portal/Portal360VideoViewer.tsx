@@ -529,18 +529,20 @@ export function Portal360VideoViewer({
       return;
     }
 
+    if (options?.immersive && isMobileLike) {
+      const isPortraitViewport = viewportSize.height > viewportSize.width;
+
+      if (!isPortraitViewport && motionSupported && !motionActive) {
+        await requestMotionPermission();
+      }
+    }
+
     try {
       await video.play();
       setHasStartedPlayback(true);
       setLoadError(null);
 
       if (options?.immersive && isMobileLike) {
-        const isPortraitViewport = viewportSize.height > viewportSize.width;
-
-        if (!isPortraitViewport) {
-          await requestMotionPermission();
-        }
-
         setMobileStage("choice");
       }
     } catch {
