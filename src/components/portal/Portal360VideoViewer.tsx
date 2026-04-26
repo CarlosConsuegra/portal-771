@@ -18,6 +18,8 @@ const DESKTOP_TEXT_BUTTON_CLASS =
   "border border-line bg-background/92 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-foreground transition-opacity hover:opacity-70";
 const MOBILE_TEXT_BUTTON_CLASS =
   "border border-white/70 bg-black/28 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-70";
+const MOBILE_START_BUTTON_CLASS =
+  "border border-white/70 bg-black/28 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70";
 
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
@@ -586,6 +588,11 @@ export function Portal360VideoViewer({
       }
     }
 
+    if (!options?.immersive) {
+      video.muted = false;
+      setIsMuted(false);
+    }
+
     try {
       await video.play();
       setHasStartedPlayback(true);
@@ -754,10 +761,10 @@ export function Portal360VideoViewer({
             <button
               type="button"
               onClick={() => void startPlayback({ immersive: false })}
-              className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-background/94 text-[1.2rem] leading-none text-foreground transition-opacity hover:opacity-70"
+              className={DESKTOP_TEXT_BUTTON_CLASS}
               aria-label="Iniciar video 360"
             >
-              ▶
+              INICIAR
             </button>
           </div>
         ) : null}
@@ -828,7 +835,7 @@ export function Portal360VideoViewer({
                   <button
                     type="button"
                     onClick={() => void startPlayback({ immersive: true })}
-                    className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                    className={MOBILE_START_BUTTON_CLASS}
                     style={{ color: "#ffffff" }}
                   >
                     Iniciar
