@@ -829,6 +829,7 @@ export function Portal360VideoViewer({
                     type="button"
                     onClick={() => void startPlayback({ immersive: true })}
                     className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
+                    style={{ color: "#ffffff" }}
                   >
                     Iniciar
                   </button>
