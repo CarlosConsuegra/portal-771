@@ -9,21 +9,17 @@ type Portal360VideoViewerProps = {
   videoUrl: string;
 };
 
-type MobileExperienceStage = "prestart" | "choice" | "normal" | "vr";
+type MobileExperienceStage = "prestart" | "normal";
 
 const MIN_LAT = -85;
 const MAX_LAT = 85;
 const HALF_SQRT = Math.sqrt(0.5);
 const DESKTOP_TEXT_BUTTON_CLASS =
   "border border-line bg-background/92 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-foreground transition-opacity hover:opacity-70";
-const DESKTOP_TEXT_BUTTON_DISABLED_CLASS =
-  "border border-line bg-background/70 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-muted";
 const MOBILE_TEXT_BUTTON_CLASS =
   "border border-white/70 bg-black/28 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-70";
 const MOBILE_START_BUTTON_CLASS =
   "border border-white/70 bg-black/40 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70";
-const MOBILE_TEXT_BUTTON_DISABLED_CLASS =
-  "border border-white/25 bg-black/18 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white/45";
 const ACTIVE_MOBILE_BUTTON_STYLE = { color: "#ffffff" } as const;
 
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
@@ -96,8 +92,6 @@ export function Portal360VideoViewer({
   const narrativeAudioRef = useRef<HTMLAudioElement | null>(null);
   const motionQuaternionRef = useRef(new THREE.Quaternion());
   const motionActiveRef = useRef(false);
-  const vrModeRef = useRef(false);
-  const isMobileLikeRef = useRef(false);
   const isFullscreenActiveRef = useRef(false);
   const isExperienceModeRef = useRef(false);
   const mobileStageRef = useRef<MobileExperienceStage>("prestart");
@@ -133,7 +127,6 @@ export function Portal360VideoViewer({
     );
   });
   const [motionActive, setMotionActive] = useState(false);
-  const [vrMode, setVrMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
   const isFullscreenActive = isFullscreen || isFallbackFullscreen;
@@ -155,7 +148,6 @@ export function Portal360VideoViewer({
   const isPortraitMobile =
     isMobileExperience && viewportSize.height > viewportSize.width;
   const isMobileNormalMode = isMobileExperience && mobileStage === "normal";
-  const isMobileVrMode = isMobileExperience && vrMode;
   const containerMode = isMobileExperience ? "mobile" : "embed";
   const narrativeText = getNarrativeText(title);
   const narrativeAudioElement = getNarrativeAudioElement();
@@ -187,17 +179,8 @@ export function Portal360VideoViewer({
   }, [narrativeAudioElement]);
 
   useEffect(() => {
-    isMobileLikeRef.current = isMobileLike;
-  }, [isMobileLike]);
-
-  useEffect(() => {
     motionActiveRef.current = motionActive;
   }, [motionActive]);
-
-  useEffect(() => {
-    vrModeRef.current = vrMode;
-    resizeRendererRef.current?.();
-  }, [vrMode]);
 
   useEffect(() => {
     isFullscreenActiveRef.current = isFullscreenActive;
@@ -236,14 +219,11 @@ export function Portal360VideoViewer({
     if (rendererElementRef.current) {
       rendererElementRef.current.style.display =
         isPortraitMobile ||
-        (isMobileExperience &&
-          !vrMode &&
-          mobileStage !== "normal" &&
-          mobileStage !== "vr")
+        (isMobileExperience && mobileStage !== "normal")
           ? "none"
           : "block";
     }
-  }, [isMobileExperience, mobileStage, isPortraitMobile, viewportSize, vrMode]);
+  }, [isMobileExperience, mobileStage, isPortraitMobile, viewportSize]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -312,10 +292,7 @@ export function Portal360VideoViewer({
     container.appendChild(rendererElement);
     rendererElement.style.display =
       isPortraitMobileRef.current ||
-      (isExperienceModeRef.current &&
-        !vrModeRef.current &&
-        mobileStageRef.current !== "normal" &&
-        mobileStageRef.current !== "vr")
+      (isExperienceModeRef.current && mobileStageRef.current !== "normal")
         ? "none"
         : "block";
 
@@ -331,32 +308,6 @@ export function Portal360VideoViewer({
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
-    const vrRenderTarget = new THREE.WebGLRenderTarget(
-      Math.max(Math.floor(initialSize.width / 2), 1),
-      Math.max(initialSize.height, 1)
-    );
-    vrRenderTarget.texture.colorSpace = THREE.SRGBColorSpace;
-    vrRenderTarget.texture.generateMipmaps = false;
-    vrRenderTarget.texture.minFilter = THREE.LinearFilter;
-    vrRenderTarget.texture.magFilter = THREE.LinearFilter;
-
-    // Render the active 360 view once, then display that same frame twice.
-    const vrScreenScene = new THREE.Scene();
-    const vrScreenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const vrPlaneGeometry = new THREE.PlaneGeometry(1, 2);
-    const vrLeftMaterial = new THREE.MeshBasicMaterial({
-      map: vrRenderTarget.texture,
-    });
-    const vrRightMaterial = new THREE.MeshBasicMaterial({
-      map: vrRenderTarget.texture,
-    });
-    const vrLeftQuad = new THREE.Mesh(vrPlaneGeometry, vrLeftMaterial);
-    vrLeftQuad.position.x = -0.5;
-    const vrRightQuad = new THREE.Mesh(vrPlaneGeometry, vrRightMaterial);
-    vrRightQuad.position.x = 0.5;
-    vrScreenScene.add(vrLeftQuad);
-    vrScreenScene.add(vrRightQuad);
-
     const euler = new THREE.Euler();
     const zee = new THREE.Vector3(0, 0, 1);
     const q0 = new THREE.Quaternion();
@@ -381,44 +332,13 @@ export function Portal360VideoViewer({
     const renderFrame = () => {
       if (
         isPortraitMobileRef.current ||
-        (isExperienceModeRef.current &&
-          !vrModeRef.current &&
-          mobileStageRef.current !== "normal" &&
-          mobileStageRef.current !== "vr")
+        (isExperienceModeRef.current && mobileStageRef.current !== "normal")
       ) {
         animationFrameRef.current = window.requestAnimationFrame(renderFrame);
         return;
       }
 
       updateCamera();
-
-      if (isExperienceModeRef.current && vrModeRef.current) {
-        const viewportWidth = renderer.domElement.width;
-        const viewportHeight = renderer.domElement.height;
-        const halfWidth = Math.floor(viewportWidth / 2);
-        const targetWidth = Math.max(halfWidth, 1);
-        const targetHeight = Math.max(viewportHeight, 1);
-
-        vrRenderTarget.setSize(targetWidth, targetHeight);
-        camera.aspect = targetWidth / targetHeight;
-        camera.fov = 90;
-        camera.updateProjectionMatrix();
-
-        renderer.setRenderTarget(vrRenderTarget);
-        renderer.setScissorTest(false);
-        renderer.setViewport(0, 0, targetWidth, targetHeight);
-        renderer.clear();
-        renderer.render(scene, camera);
-
-        renderer.setRenderTarget(null);
-        renderer.setScissorTest(false);
-        renderer.setViewport(0, 0, viewportWidth, viewportHeight);
-        renderer.setScissor(0, 0, viewportWidth, viewportHeight);
-        renderer.clear();
-        renderer.render(vrScreenScene, vrScreenCamera);
-        animationFrameRef.current = window.requestAnimationFrame(renderFrame);
-        return;
-      }
 
       renderer.setScissorTest(false);
       renderer.setViewport(
@@ -448,13 +368,10 @@ export function Portal360VideoViewer({
         nextSize.width,
         nextSize.height
       );
-      const nextVrWidth = Math.max(Math.floor(nextSize.width / 2), 1);
-      const nextVrHeight = Math.max(nextSize.height, 1);
       camera.aspect = nextProjection.aspect;
       camera.fov = nextProjection.fov;
       camera.updateProjectionMatrix();
       renderer.setSize(nextSize.width, nextSize.height, false);
-      vrRenderTarget.setSize(nextVrWidth, nextVrHeight);
     };
 
     resizeRendererRef.current = handleResize;
@@ -569,10 +486,6 @@ export function Portal360VideoViewer({
       texture.dispose();
       geometry.dispose();
       material.dispose();
-      vrRenderTarget.dispose();
-      vrPlaneGeometry.dispose();
-      vrLeftMaterial.dispose();
-      vrRightMaterial.dispose();
       renderer.dispose();
       rendererRef.current = null;
       rendererElementRef.current = null;
@@ -597,7 +510,6 @@ export function Portal360VideoViewer({
     setIsPlaying(false);
     setIsMuted(true);
     setHasStartedPlayback(false);
-    setVrMode(false);
     setIsExperienceMode(isMobileLike);
     setMobileStage("prestart");
     setMotionActive(false);
@@ -698,7 +610,7 @@ export function Portal360VideoViewer({
       setLoadError(null);
 
       if (options?.immersive && isMobileLike) {
-        setMobileStage("choice");
+        setMobileStage("normal");
       }
     } catch {
       setLoadError("No se pudo iniciar la reproduccion.");
@@ -886,15 +798,6 @@ export function Portal360VideoViewer({
         >
           {isMuted ? "AUDIO" : "SILENCIAR"}
         </button>
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className={DESKTOP_TEXT_BUTTON_DISABLED_CLASS}
-          aria-label="VR pronto"
-        >
-          VR
-        </button>
       </div>
 
       <button
@@ -950,39 +853,6 @@ export function Portal360VideoViewer({
                   </button>
                 </div>
               ) : null}
-
-              {!isPortraitMobile && mobileStage === "choice" ? (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/72">
-                  <div className="flex flex-col gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setVrMode(false);
-                        setMobileStage("normal");
-                      }}
-                      className={MOBILE_START_BUTTON_CLASS}
-                      style={ACTIVE_MOBILE_BUTTON_STYLE}
-                    >
-                      Normal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setVrMode(true);
-                        setMobileStage("vr");
-                      }}
-                      className={MOBILE_START_BUTTON_CLASS}
-                      style={ACTIVE_MOBILE_BUTTON_STYLE}
-                    >
-                      VR
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              {isMobileVrMode ? (
-                <div className="pointer-events-none absolute top-0 bottom-0 left-1/2 z-10 w-px -translate-x-1/2 bg-white/35" />
-              ) : null}
             </div>
 
             {isMobileNormalMode ? (
@@ -1025,42 +895,6 @@ export function Portal360VideoViewer({
                 ) : null}
               </div>
             ) : null}
-
-            {isMobileVrMode ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setVrMode(false);
-                  setMobileStage("normal");
-                }}
-                className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
-                style={ACTIVE_MOBILE_BUTTON_STYLE}
-              >
-                SALIR VR
-              </button>
-            ) : isMobileNormalMode ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setVrMode(true);
-                  setMobileStage("vr");
-                }}
-                className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
-                style={ACTIVE_MOBILE_BUTTON_STYLE}
-              >
-                VR
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_DISABLED_CLASS}`}
-                aria-label="VR pronto"
-              >
-                VR
-              </button>
-            )}
 
             {loadError || motionError ? (
               <p className="absolute right-2 bottom-2 max-w-[12rem] rounded-[1rem] border border-white/35 bg-black/55 px-3 py-2 text-[0.68rem] leading-relaxed text-white">
