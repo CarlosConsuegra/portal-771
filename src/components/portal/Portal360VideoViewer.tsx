@@ -18,9 +18,6 @@ const DESKTOP_TEXT_BUTTON_CLASS =
   "border border-line bg-background/92 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-foreground transition-opacity hover:opacity-70";
 const MOBILE_TEXT_BUTTON_CLASS =
   "border border-white/70 bg-black/28 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-70";
-const MOBILE_START_BUTTON_CLASS =
-  "border border-white/70 bg-black/40 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70";
-const ACTIVE_MOBILE_BUTTON_STYLE = { color: "#ffffff" } as const;
 
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
@@ -218,8 +215,7 @@ export function Portal360VideoViewer({
 
     if (rendererElementRef.current) {
       rendererElementRef.current.style.display =
-        isPortraitMobile ||
-        (isMobileExperience && mobileStage !== "normal")
+        isPortraitMobile || (isMobileExperience && mobileStage !== "normal")
           ? "none"
           : "block";
     }
@@ -308,6 +304,7 @@ export function Portal360VideoViewer({
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
+
     const euler = new THREE.Euler();
     const zee = new THREE.Vector3(0, 0, 1);
     const q0 = new THREE.Quaternion();
@@ -339,22 +336,7 @@ export function Portal360VideoViewer({
       }
 
       updateCamera();
-
-      renderer.setScissorTest(false);
-      renderer.setViewport(
-        0,
-        0,
-        renderer.domElement.width,
-        renderer.domElement.height
-      );
-      renderer.setScissor(
-        0,
-        0,
-        renderer.domElement.width,
-        renderer.domElement.height
-      );
       renderer.render(scene, camera);
-
       animationFrameRef.current = window.requestAnimationFrame(renderFrame);
     };
 
@@ -846,8 +828,7 @@ export function Portal360VideoViewer({
                   <button
                     type="button"
                     onClick={() => void startPlayback({ immersive: true })}
-                    className={MOBILE_START_BUTTON_CLASS}
-                    style={ACTIVE_MOBILE_BUTTON_STYLE}
+                    className="rounded-full border border-white/30 bg-white/8 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70"
                   >
                     Iniciar
                   </button>
@@ -861,7 +842,6 @@ export function Portal360VideoViewer({
                   type="button"
                   onClick={handleBackToMap}
                   className={MOBILE_TEXT_BUTTON_CLASS}
-                  style={ACTIVE_MOBILE_BUTTON_STYLE}
                 >
                   VOLVER
                 </button>
@@ -869,7 +849,6 @@ export function Portal360VideoViewer({
                   type="button"
                   onClick={togglePlayback}
                   className={MOBILE_TEXT_BUTTON_CLASS}
-                  style={ACTIVE_MOBILE_BUTTON_STYLE}
                   aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
                 >
                   {isPlaying ? "PAUSA" : "PLAY"}
@@ -878,7 +857,6 @@ export function Portal360VideoViewer({
                   type="button"
                   onClick={toggleMuted}
                   className={MOBILE_TEXT_BUTTON_CLASS}
-                  style={ACTIVE_MOBILE_BUTTON_STYLE}
                   aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
                 >
                   {isMuted ? "AUDIO" : "SILENCIAR"}
@@ -888,7 +866,6 @@ export function Portal360VideoViewer({
                     type="button"
                     onClick={toggleNarrativeAudio}
                     className={MOBILE_TEXT_BUTTON_CLASS}
-                    style={ACTIVE_MOBILE_BUTTON_STYLE}
                   >
                     {isNarrativePlaying ? "PAUSAR" : "NARRATIVA"}
                   </button>
