@@ -24,6 +24,7 @@ const MOBILE_START_BUTTON_CLASS =
   "border border-white/70 bg-black/40 px-6 py-3 text-sm uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-70";
 const MOBILE_TEXT_BUTTON_DISABLED_CLASS =
   "border border-white/25 bg-black/18 px-3 py-2 text-[0.68rem] uppercase tracking-[0.18em] text-white/45";
+const ACTIVE_MOBILE_BUTTON_STYLE = { color: "#ffffff" } as const;
 
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
@@ -376,12 +377,9 @@ export function Portal360VideoViewer({
 
         renderer.autoClear = false;
         renderer.setScissorTest(true);
-        renderer.setViewport(0, 0, viewportWidth, viewportHeight);
-        renderer.setScissor(0, 0, viewportWidth, viewportHeight);
-        renderer.clear();
-
         renderer.setViewport(0, 0, halfWidth, viewportHeight);
         renderer.setScissor(0, 0, halfWidth, viewportHeight);
+        renderer.clear();
         renderer.render(scene, camera);
 
         renderer.setViewport(halfWidth, 0, halfWidth, viewportHeight);
@@ -389,22 +387,24 @@ export function Portal360VideoViewer({
         renderer.render(scene, camera);
         renderer.setScissorTest(false);
         renderer.autoClear = true;
-      } else {
-        renderer.setScissorTest(false);
-        renderer.setViewport(
-          0,
-          0,
-          renderer.domElement.width,
-          renderer.domElement.height
-        );
-        renderer.setScissor(
-          0,
-          0,
-          renderer.domElement.width,
-          renderer.domElement.height
-        );
-        renderer.render(scene, camera);
+        animationFrameRef.current = window.requestAnimationFrame(renderFrame);
+        return;
       }
+
+      renderer.setScissorTest(false);
+      renderer.setViewport(
+        0,
+        0,
+        renderer.domElement.width,
+        renderer.domElement.height
+      );
+      renderer.setScissor(
+        0,
+        0,
+        renderer.domElement.width,
+        renderer.domElement.height
+      );
+      renderer.render(scene, camera);
 
       animationFrameRef.current = window.requestAnimationFrame(renderFrame);
     };
@@ -908,6 +908,7 @@ export function Portal360VideoViewer({
                     type="button"
                     onClick={() => void startPlayback({ immersive: true })}
                     className={MOBILE_START_BUTTON_CLASS}
+                    style={ACTIVE_MOBILE_BUTTON_STYLE}
                   >
                     Iniciar
                   </button>
@@ -924,6 +925,7 @@ export function Portal360VideoViewer({
                         setMobileStage("normal");
                       }}
                       className={MOBILE_START_BUTTON_CLASS}
+                      style={ACTIVE_MOBILE_BUTTON_STYLE}
                     >
                       Normal
                     </button>
@@ -934,6 +936,7 @@ export function Portal360VideoViewer({
                         setMobileStage("vr");
                       }}
                       className={MOBILE_START_BUTTON_CLASS}
+                      style={ACTIVE_MOBILE_BUTTON_STYLE}
                     >
                       VR
                     </button>
@@ -952,6 +955,7 @@ export function Portal360VideoViewer({
                   type="button"
                   onClick={handleBackToMap}
                   className={MOBILE_TEXT_BUTTON_CLASS}
+                  style={ACTIVE_MOBILE_BUTTON_STYLE}
                 >
                   VOLVER
                 </button>
@@ -959,6 +963,7 @@ export function Portal360VideoViewer({
                   type="button"
                   onClick={togglePlayback}
                   className={MOBILE_TEXT_BUTTON_CLASS}
+                  style={ACTIVE_MOBILE_BUTTON_STYLE}
                   aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
                 >
                   {isPlaying ? "PAUSA" : "PLAY"}
@@ -967,6 +972,7 @@ export function Portal360VideoViewer({
                   type="button"
                   onClick={toggleMuted}
                   className={MOBILE_TEXT_BUTTON_CLASS}
+                  style={ACTIVE_MOBILE_BUTTON_STYLE}
                   aria-label={isMuted ? "Activar audio" : "Silenciar audio"}
                 >
                   {isMuted ? "AUDIO" : "SILENCIAR"}
@@ -976,6 +982,7 @@ export function Portal360VideoViewer({
                     type="button"
                     onClick={toggleNarrativeAudio}
                     className={MOBILE_TEXT_BUTTON_CLASS}
+                    style={ACTIVE_MOBILE_BUTTON_STYLE}
                   >
                     {isNarrativePlaying ? "PAUSAR" : "NARRATIVA"}
                   </button>
@@ -991,6 +998,7 @@ export function Portal360VideoViewer({
                   setMobileStage("normal");
                 }}
                 className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
+                style={ACTIVE_MOBILE_BUTTON_STYLE}
               >
                 SALIR VR
               </button>
@@ -1002,6 +1010,7 @@ export function Portal360VideoViewer({
                   setMobileStage("vr");
                 }}
                 className={`absolute top-2 right-2 ${MOBILE_TEXT_BUTTON_CLASS}`}
+                style={ACTIVE_MOBILE_BUTTON_STYLE}
               >
                 VR
               </button>
