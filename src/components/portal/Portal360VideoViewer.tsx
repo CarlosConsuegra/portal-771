@@ -331,6 +331,31 @@ export function Portal360VideoViewer({
     const material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
+    const vrRenderTarget = new THREE.WebGLRenderTarget(
+      Math.max(Math.floor(initialSize.width / 2), 1),
+      Math.max(initialSize.height, 1)
+    );
+    vrRenderTarget.texture.colorSpace = THREE.SRGBColorSpace;
+    vrRenderTarget.texture.generateMipmaps = false;
+    vrRenderTarget.texture.minFilter = THREE.LinearFilter;
+    vrRenderTarget.texture.magFilter = THREE.LinearFilter;
+
+    // Render the active 360 view once, then display that same frame twice.
+    const vrScreenScene = new THREE.Scene();
+    const vrScreenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const vrPlaneGeometry = new THREE.PlaneGeometry(1, 2);
+    const vrLeftMaterial = new THREE.MeshBasicMaterial({
+      map: vrRenderTarget.texture,
+    });
+    const vrRightMaterial = new THREE.MeshBasicMaterial({
+      map: vrRenderTarget.texture,
+    });
+    const vrLeftQuad = new THREE.Mesh(vrPlaneGeometry, vrLeftMaterial);
+    vrLeftQuad.position.x = -0.5;
+    const vrRightQuad = new THREE.Mesh(vrPlaneGeometry, vrRightMaterial);
+    vrRightQuad.position.x = 0.5;
+    vrScreenScene.add(vrLeftQuad);
+    vrScreenScene.add(vrRightQuad);
 
     const euler = new THREE.Euler();
     const zee = new THREE.Vector3(0, 0, 1);
@@ -371,22 +396,26 @@ export function Portal360VideoViewer({
         const viewportWidth = renderer.domElement.width;
         const viewportHeight = renderer.domElement.height;
         const halfWidth = Math.floor(viewportWidth / 2);
-        camera.aspect = halfWidth / Math.max(viewportHeight, 1);
+        const targetWidth = Math.max(halfWidth, 1);
+        const targetHeight = Math.max(viewportHeight, 1);
+
+        vrRenderTarget.setSize(targetWidth, targetHeight);
+        camera.aspect = targetWidth / targetHeight;
         camera.fov = 90;
         camera.updateProjectionMatrix();
 
-        renderer.autoClear = false;
-        renderer.setScissorTest(true);
-        renderer.setViewport(0, 0, halfWidth, viewportHeight);
-        renderer.setScissor(0, 0, halfWidth, viewportHeight);
+        renderer.setRenderTarget(vrRenderTarget);
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, targetWidth, targetHeight);
         renderer.clear();
         renderer.render(scene, camera);
 
-        renderer.setViewport(halfWidth, 0, halfWidth, viewportHeight);
-        renderer.setScissor(halfWidth, 0, halfWidth, viewportHeight);
-        renderer.render(scene, camera);
+        renderer.setRenderTarget(null);
         renderer.setScissorTest(false);
-        renderer.autoClear = true;
+        renderer.setViewport(0, 0, viewportWidth, viewportHeight);
+        renderer.setScissor(0, 0, viewportWidth, viewportHeight);
+        renderer.clear();
+        renderer.render(vrScreenScene, vrScreenCamera);
         animationFrameRef.current = window.requestAnimationFrame(renderFrame);
         return;
       }
@@ -419,10 +448,13 @@ export function Portal360VideoViewer({
         nextSize.width,
         nextSize.height
       );
+      const nextVrWidth = Math.max(Math.floor(nextSize.width / 2), 1);
+      const nextVrHeight = Math.max(nextSize.height, 1);
       camera.aspect = nextProjection.aspect;
       camera.fov = nextProjection.fov;
       camera.updateProjectionMatrix();
       renderer.setSize(nextSize.width, nextSize.height, false);
+      vrRenderTarget.setSize(nextVrWidth, nextVrHeight);
     };
 
     resizeRendererRef.current = handleResize;
@@ -537,6 +569,10 @@ export function Portal360VideoViewer({
       texture.dispose();
       geometry.dispose();
       material.dispose();
+      vrRenderTarget.dispose();
+      vrPlaneGeometry.dispose();
+      vrLeftMaterial.dispose();
+      vrRightMaterial.dispose();
       renderer.dispose();
       rendererRef.current = null;
       rendererElementRef.current = null;
