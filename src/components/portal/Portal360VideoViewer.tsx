@@ -63,6 +63,32 @@ function getViewportSize(container: HTMLDivElement, useVisualViewport: boolean) 
   };
 }
 
+function getWindowViewportSize() {
+  if (typeof window === "undefined") {
+    return { width: 0, height: 0 };
+  }
+
+  return {
+    width: window.visualViewport?.width ?? window.innerWidth,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  };
+}
+
+function isMobileImmersiveViewport(width: number, height: number) {
+  if (width <= 768) {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const hasTouchLikePointer =
+    window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+
+  return hasTouchLikePointer && height <= 600 && width <= 1024;
+}
+
 function getCameraProjection(immersive: boolean, width: number, height: number) {
   if (immersive) {
     return {
@@ -127,34 +153,27 @@ export function Portal360VideoViewer({
   const [motionSupported] = useState(
     () => typeof window !== "undefined" && "DeviceOrientationEvent" in window
   );
-  const [isMobileLike] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return (
-      window.matchMedia("(max-width: 768px)").matches ||
-      window.matchMedia("(pointer: coarse)").matches ||
-      navigator.maxTouchPoints > 0
-    );
-  });
   const [motionActive, setMotionActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
   const isFullscreenActive = isFullscreen || isFallbackFullscreen;
-  const [isExperienceMode, setIsExperienceMode] = useState(isMobileLike);
+  const [viewportSize, setViewportSize] = useState(() => getWindowViewportSize());
+  const isMobileLike = isMobileImmersiveViewport(
+    viewportSize.width,
+    viewportSize.height
+  );
+  const [isExperienceMode, setIsExperienceMode] = useState(() =>
+    isMobileImmersiveViewport(
+      typeof window === "undefined"
+        ? 0
+        : window.visualViewport?.width ?? window.innerWidth,
+      typeof window === "undefined"
+        ? 0
+        : window.visualViewport?.height ?? window.innerHeight
+    )
+  );
   const [mobileStage, setMobileStage] =
     useState<MobileExperienceStage>("prestart");
-  const [viewportSize, setViewportSize] = useState(() => {
-    if (typeof window === "undefined") {
-      return { width: 0, height: 0 };
-    }
-
-    return {
-      width: window.visualViewport?.width ?? window.innerWidth,
-      height: window.visualViewport?.height ?? window.innerHeight,
-    };
-  });
 
   const isMobileExperience = isMobileLike && isExperienceMode;
   const isPortraitMobile =
@@ -204,10 +223,7 @@ export function Portal360VideoViewer({
     }
 
     const updateViewportSize = () => {
-      setViewportSize({
-        width: window.visualViewport?.width ?? window.innerWidth,
-        height: window.visualViewport?.height ?? window.innerHeight,
-      });
+      setViewportSize(getWindowViewportSize());
     };
 
     updateViewportSize();
