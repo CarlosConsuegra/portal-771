@@ -77,12 +77,25 @@ function getCameraProjection(immersive: boolean, width: number, height: number) 
   };
 }
 
+function getActiveContainer(
+  embeddedContainer: HTMLDivElement | null,
+  mobileContainer: HTMLDivElement | null,
+  useMobileContainer: boolean
+) {
+  if (useMobileContainer) {
+    return mobileContainer ?? embeddedContainer;
+  }
+
+  return embeddedContainer;
+}
+
 export function Portal360VideoViewer({
   title,
   videoUrl,
 }: Portal360VideoViewerProps) {
   const shellRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const embeddedContainerRef = useRef<HTMLDivElement>(null);
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const rendererElementRef = useRef<HTMLCanvasElement | null>(null);
@@ -252,8 +265,12 @@ export function Portal360VideoViewer({
   }, [isFullscreenActive, isMobileExperience]);
 
   useEffect(() => {
-    const container = containerRef.current;
     const video = videoRef.current;
+    const container = getActiveContainer(
+      embeddedContainerRef.current,
+      mobileContainerRef.current,
+      isExperienceModeRef.current
+    );
 
     if (!container || !video) {
       return;
@@ -343,8 +360,18 @@ export function Portal360VideoViewer({
     };
 
     const handleResize = () => {
+      const nextContainer = getActiveContainer(
+        embeddedContainerRef.current,
+        mobileContainerRef.current,
+        isExperienceModeRef.current
+      );
+
+      if (!nextContainer) {
+        return;
+      }
+
       const nextSize = getViewportSize(
-        container,
+        nextContainer,
         isExperienceModeRef.current || isFullscreenActiveRef.current
       );
       const nextProjection = getCameraProjection(
@@ -460,26 +487,46 @@ export function Portal360VideoViewer({
       }
 
       interactionRef.current = null;
-      video.pause();
 
+      texture.dispose();
+      geometry.dispose();
+      material.map = null;
+      material.dispose();
+      video.pause();
       if (video.src) {
         video.removeAttribute("src");
         video.load();
       }
-
-      texture.dispose();
-      geometry.dispose();
-      material.dispose();
+      renderer.forceContextLoss();
       renderer.dispose();
       rendererRef.current = null;
       rendererElementRef.current = null;
       resizeRendererRef.current = null;
 
-      if (rendererElement.parentNode === container) {
-        container.removeChild(rendererElement);
+      if (rendererElement.parentNode instanceof Node) {
+        rendererElement.parentNode.removeChild(rendererElement);
       }
     };
-  }, [videoUrl, containerMode]);
+  }, [videoUrl]);
+
+  useEffect(() => {
+    const rendererElement = rendererElementRef.current;
+    const container = getActiveContainer(
+      embeddedContainerRef.current,
+      mobileContainerRef.current,
+      containerMode === "mobile"
+    );
+
+    if (!rendererElement || !container) {
+      return;
+    }
+
+    if (rendererElement.parentNode !== container) {
+      container.appendChild(rendererElement);
+    }
+
+    resizeRendererRef.current?.();
+  }, [containerMode]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -527,11 +574,6 @@ export function Portal360VideoViewer({
     video.addEventListener("error", handleError);
 
     return () => {
-      video.pause();
-      if (video.src) {
-        video.removeAttribute("src");
-        video.load();
-      }
       video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("play", handlePlay);
       video.removeEventListener("pause", handlePause);
@@ -746,7 +788,7 @@ export function Portal360VideoViewer({
       }`}
     >
       <div
-        ref={containerRef}
+        ref={embeddedContainerRef}
         aria-label={`${title} en video 360`}
         className={`map-paper relative w-full overflow-hidden ${
           isFullscreenActive ? "h-full max-h-none bg-black" : "aspect-[2/1] max-h-[70vh]"
@@ -818,7 +860,7 @@ export function Portal360VideoViewer({
             style={{ width: "100vw", height: "100dvh" }}
           >
             <div
-              ref={containerRef}
+              ref={mobileContainerRef}
               aria-label={`${title} en video 360`}
               className="relative h-full w-full overflow-hidden bg-black"
             >
