@@ -34,6 +34,11 @@
 - Polish `INICIAR` button: rectangular, not rounded
 - Desktop pre-play button should say `INICIAR` instead of a play icon
 - Desktop `INICIAR` should start video with audio ON
+- Known issue: Brave may fail to display `video_360` in some environments
+  - This does not block release because `video_360` works in Chrome desktop, Chrome mobile, and iOS Safari/Chrome
+  - Recommended browsers for now: Chrome and Safari on mobile
+  - Revisit Brave later as browser-specific compatibility work
+  - Possible causes to investigate later: Brave Shields/privacy restrictions, autoplay/media policy differences, WebGL/hardware acceleration behavior, R2/CORS/media loading interaction
 - Future feature: upload `video_360` files from admin directly to Cloudflare R2
 - Future feature: proper cardboard VR mode
 - Future polish: final button design, not emoji/icons
