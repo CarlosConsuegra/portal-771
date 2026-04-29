@@ -146,3 +146,56 @@ on public.contact_messages
 for insert
 to anon, authenticated
 with check (true);
+
+create table if not exists public.contact_rate_limit_events (
+  id bigint generated always as identity primary key,
+  identifier_hash text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists contact_rate_limit_events_identifier_hash_created_at_idx
+on public.contact_rate_limit_events (identifier_hash, created_at desc);
+
+alter table public.contact_rate_limit_events enable row level security;
+
+create or replace function public.check_contact_rate_limit(
+  p_identifier_hash text,
+  p_window_seconds integer default 3600,
+  p_max_attempts integer default 3
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_attempt_count integer;
+  v_cutoff timestamptz;
+begin
+  if p_identifier_hash is null or btrim(p_identifier_hash) = '' then
+    return true;
+  end if;
+
+  v_cutoff := now() - make_interval(secs => p_window_seconds);
+
+  delete from public.contact_rate_limit_events
+  where created_at < v_cutoff;
+
+  select count(*)
+  into v_attempt_count
+  from public.contact_rate_limit_events
+  where identifier_hash = p_identifier_hash
+    and created_at >= v_cutoff;
+
+  if v_attempt_count >= p_max_attempts then
+    return false;
+  end if;
+
+  insert into public.contact_rate_limit_events (identifier_hash)
+  values (p_identifier_hash);
+
+  return true;
+end;
+$$;
+
+grant execute on function public.check_contact_rate_limit(text, integer, integer) to anon, authenticated;

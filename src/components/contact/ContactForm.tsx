@@ -16,6 +16,19 @@ export function ContactForm() {
 
   return (
     <form action={formAction} className="mt-8 flex max-w-[28rem] flex-col gap-6">
+      <div className="honeypot-field" aria-hidden="true">
+        <label className="flex flex-col gap-2">
+          <span>website</span>
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            className="border border-line bg-transparent px-3 py-2 text-[1rem] text-foreground outline-none"
+          />
+        </label>
+      </div>
+
       <label className="flex flex-col gap-2">
         <span className="text-[0.82rem] text-muted">nombre</span>
         <input
